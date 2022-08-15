@@ -165,6 +165,6 @@ Hooks.on("renderRollTableConfig", treasure.augmentTable);
 Hooks.on("updateActor", party.update);
 
 Hooks.on("renderCompendium", renderList.RenderCompendium);
-Hooks.on("renderSidebarDirectory", renderList.RenderDirectory);
+Hooks.on("renderItemDirectory", renderList.RenderItemDirectory);
 
 Hooks.on("OSE.Party.showSheet", OsePartySheet.showPartySheet);
