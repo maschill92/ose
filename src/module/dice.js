@@ -291,6 +291,11 @@ export class OseDice {
     });
   }
 
+  /**
+   * JS doc to support typescript
+   * @param {object} param0 
+   * @returns 
+   */
   static async RollSave({
     parts = [],
     data = {},
@@ -368,6 +373,11 @@ export class OseDice {
     });
   }
 
+  /**
+   * JS doc to support typescript
+   * @param {object} param0 
+   * @returns 
+   */
   static async Roll({
     parts = [],
     data = {},

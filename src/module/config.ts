@@ -7,8 +7,8 @@ export type OseConfig = {
   roll_type: Record<RollType, string>;
   saves_short: Record<Save, string>;
   saves_long: Record<Save, string>;
-  armor: Record<Armor, string>;
-  colors: Record<Color, string>;
+  armor: Record<ArmorType, string>;
+  colors: Record<PatternColor, string>;
   languages: string[];
   tags: Record<InventoryItemTag, string>;
   tag_images: Record<InventoryItemTag, string>;
@@ -23,8 +23,8 @@ export type Attribute = "str" | "int" | "dex" | "wis" | "con" | "cha";
 export type ExplorationSkill = "ld" | "od" | "sd" | "fs";
 export type RollType = "result" | "above" | "below";
 export type Save = "death" | "wand" | "paralysis" | "breath" | "spell";
-export type Armor = "unarmored" | "light" | "heavy" | "shield";
-export type Color =
+export type ArmorType = "unarmored" | "light" | "heavy" | "shield";
+export type PatternColor =
   | "green"
   | "red"
   | "yellow"

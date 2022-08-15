@@ -1,3 +1,7 @@
+//@ts-check
+// import { ActorDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData";
+// import { ActorDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData";
+import { Attribute, ExplorationSkill, Save } from "../config";
 import { OseDice } from "../dice";
 import { OseItem } from "../item/entity";
 
@@ -17,11 +21,14 @@ export class OseActor extends Actor {
     this.computeEncumbrance();
     this.computeTreasure();
 
+    this.update({});
+    this.data.type;
+
     // Determine Initiative
     if (game.settings.get("ose", "initiative") != "group") {
       data.initiative.value = data.initiative.mod;
       if (this.data.type == "character") {
-        data.initiative.value += data.scores.dex.init;
+        this.data.data.initiative.value += this.data.data.scores.dex.init;
       }
     } else {
       data.initiative.value = 0;
@@ -29,7 +36,15 @@ export class OseActor extends Actor {
     data.movement.encounter = Math.floor(data.movement.base / 3);
   }
 
-  static async update(data, options = {}) {
+  /**
+   * 
+   * @param {DeepPartial<import("@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData").ActorDataConstructorData>} data 
+   * @param {*} options 
+   */
+  static async update(
+    data,
+    options = {}
+  ) {
     // Compute AAC from AC
     if (data.data?.ac?.value) {
       data.data.aac = { value: 19 - data.data.ac.value };
@@ -47,10 +62,17 @@ export class OseActor extends Actor {
     super.update(data, options);
   }
 
+  /**
+   * 
+   * @param {string} embeddedName 
+   * @param {DeepPartial<import("@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/itemData").ItemDataConstructorData>[]} data 
+   * @param {*} context 
+   * @returns 
+   */
   async createEmbeddedDocuments(embeddedName, data = [], context = {}) {
     data.map((item) => {
       if (item.img === undefined) {
-        item.img = OseItem.defaultIcons[item.type];
+        item.img = item.type ? OseItem.defaultIcons[item.type] : null;
       }
     });
     return super.createEmbeddedDocuments(embeddedName, data, context);
@@ -59,7 +81,12 @@ export class OseActor extends Actor {
   /* -------------------------------------------- */
   /*  Socket Listeners and Handlers
     /* -------------------------------------------- */
-  getExperience(value, options = {}) {
+  /**
+   * 
+   * @param {number} value 
+   * @returns 
+   */
+  getExperience(value) {
     if (this.data.type != "character") {
       return;
     }
@@ -80,56 +107,75 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   * 
+   * @returns {boolean}
+   */
   isNew() {
-    const data = this.data.data;
     if (this.data.type == "character") {
+      const data = this.data.data;
       let ct = 0;
       Object.values(data.scores).forEach((el) => {
         ct += el.value;
       });
       return ct == 0 ? true : false;
     } else if (this.data.type == "monster") {
+      const data = this.data.data;
       let ct = 0;
       Object.values(data.saves).forEach((el) => {
         ct += el.value;
       });
       return ct == 0 ? true : false;
     }
+    return false;
   }
 
+  /**
+   *
+   * @param {number} hd
+   */
   generateSave(hd) {
-    let saves = {};
+    /**
+     * @type {typeof CONFIG.OSE.monster_saves[0] | null}
+     */
+    let saves = null;
     for (let i = 0; i <= hd; i++) {
       let tmp = CONFIG.OSE.monster_saves[i];
       if (tmp) {
         saves = tmp;
       }
     }
+    if (!saves) {
+      throw new Error(`Unable get find saving throws for HD ${hd}`);
+    }
     // Compute Thac0
     let thac0 = 20;
     Object.keys(CONFIG.OSE.monster_thac0).forEach((k) => {
-      if (parseInt(hd) < parseInt(k)) {
+      const thac0Hd = parseInt(k);
+      if (thac0 < thac0Hd) {
         return;
       }
-      thac0 = CONFIG.OSE.monster_thac0[k];
+      thac0 = CONFIG.OSE.monster_thac0[thac0Hd];
     });
     this.update({
       "data.thac0.value": thac0,
-      "data.saves": {
-        death: {
-          value: saves.d,
-        },
-        wand: {
-          value: saves.w,
-        },
-        paralysis: {
-          value: saves.p,
-        },
-        breath: {
-          value: saves.b,
-        },
-        spell: {
-          value: saves.s,
+      data: {
+        saves: {
+          death: {
+            value: saves.d,
+          },
+          wand: {
+            value: saves.w,
+          },
+          paralysis: {
+            value: saves.p,
+          },
+          breath: {
+            value: saves.b,
+          },
+          spell: {
+            value: saves.s,
+          },
         },
       },
     });
@@ -139,7 +185,7 @@ export class OseActor extends Actor {
   /*  Rolls                                       */
   /* -------------------------------------------- */
 
-  rollHP(options = {}) {
+  rollHP() {
     let roll = new Roll(this.data.data.hp.hd).roll({ async: false });
     return this.update({
       data: {
@@ -151,7 +197,14 @@ export class OseActor extends Actor {
     });
   }
 
-  rollSave(save, options = {}) {
+  rollSave(
+    save: Save,
+    options: {
+      event?: MouseEvent;
+      fastForward?: boolean;
+      chatMessage?: string;
+    } = {}
+  ) {
     const label = game.i18n.localize(`OSE.saves.${save}.long`);
     const rollParts = ["1d20"];
 
@@ -184,9 +237,12 @@ export class OseActor extends Actor {
     });
   }
 
-  rollMorale(options = {}) {
-    const rollParts = ["2d6"];
+  rollMorale(options: { event?: Event } = {}) {
+    if (this.data.type !== "monster") {
+      return;
+    }
 
+    const rollParts = ["2d6"];
     const data = {
       actor: this.data,
       roll: {
@@ -207,7 +263,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollLoyalty(options = {}) {
+  rollLoyalty(options: { event?: Event } = {}) {
     const label = game.i18n.localize(`OSE.roll.loyalty`);
     const rollParts = ["2d6"];
 
@@ -231,7 +287,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollReaction(options = {}) {
+  rollReaction(options: { event?: MouseEvent } = {}) {
     const rollParts = ["2d6"];
 
     const data = {
@@ -273,7 +329,14 @@ export class OseActor extends Actor {
     });
   }
 
-  rollCheck(score, options = {}) {
+  rollCheck(
+    score: Attribute,
+    options: {
+      event?: MouseEvent;
+      fastForward?: boolean;
+      chatMessage?: boolean;
+    } = {}
+  ) {
     if (this.data.type !== "character") return;
 
     const label = game.i18n.localize(`OSE.scores.${score}.long`);
@@ -306,11 +369,11 @@ export class OseActor extends Actor {
     });
   }
 
-  rollHitDice(options = {}) {
+  rollHitDice(options: { event?: Event } = {}) {
     const label = game.i18n.localize(`OSE.roll.hd`);
     const rollParts = [this.data.data.hp.hd];
     if (this.data.type == "character") {
-      rollParts.push(this.data.data.scores.con.mod);
+      rollParts.push(this.data.data.scores.con.mod.toString());
     }
 
     const data = {
@@ -332,7 +395,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollAppearing(options = {}) {
+  rollAppearing(options: { event?: MouseEvent; check?: string } = {}) {
     if (this.data.type !== "monster") return;
 
     const rollParts = [];
@@ -365,7 +428,10 @@ export class OseActor extends Actor {
     });
   }
 
-  rollExploration(expl, options = {}) {
+  rollExploration(
+    expl: ExplorationSkill,
+    options: { event?: MouseEvent } = {}
+  ) {
     if (this.data.type !== "character") return;
 
     const label = game.i18n.localize(`OSE.exploration.${expl}.long`);
@@ -398,7 +464,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollDamage(attData, options = {}) {
+  rollDamage(attData, options: { event?: MouseEvent } = {}) {
     const data = this.data.data;
 
     const rollData = {
@@ -417,8 +483,8 @@ export class OseActor extends Actor {
     }
 
     // Add Str to damage
-    if (attData.roll.type == "melee") {
-      dmgParts.push(data.scores.str.mod);
+    if (attData.roll.type == "melee" && this.data.type === "character") {
+      dmgParts.push(this.data.data.scores.str.mod);
     }
 
     // Damage roll
@@ -434,8 +500,8 @@ export class OseActor extends Actor {
   }
 
   async targetAttack(data, type, options) {
-    if (game.user.targets.size > 0) {
-      for (let t of game.user.targets.values()) {
+    if (game?.user?.targets?.size ?? -1 > 0) {
+      for (let t of game?.user.targets.values()) {
         data.roll.target = t;
         await this.rollAttack(data, {
           type: type,
@@ -528,6 +594,13 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * TODO: Fix this param type to some sort of generic to support returning number or string;
+   * @param {Record<number, any>} table
+   * @param {number} val
+   * @returns {any}
+   */
   static _valueFromTable(table, val) {
     let output;
     for (let i = 0; i <= val; i++) {
@@ -535,13 +608,20 @@ export class OseActor extends Actor {
         output = table[i];
       }
     }
+    if (output == undefined) {
+      throw new Error(
+        `Unable to find value from table: ${JSON.stringify(
+          table
+        )}, value: ${val}`
+      );
+    }
     return output;
   }
 
   _isSlow() {
     this.data.data.isSlow = ![...this.data.items.values()].every((item) => {
       if (
-        item.type !== "weapon" ||
+        item.data.type !== "weapon" ||
         !item.data.data.slow ||
         !item.data.data.equipped
       ) {
@@ -560,18 +640,20 @@ export class OseActor extends Actor {
     const items = [...this.data.items.values()];
     // Compute encumbrance
     const hasAdventuringGear = items.some((item) => {
-      return item.type === "item" && !item.data.data.treasure;
+      return item.data.type === "item" && !item.data.data.treasure;
     });
 
     let totalWeight = items.reduce((acc, item) => {
       if (
-        item.type === "item" &&
+        item.data.type === "item" &&
         (["complete", "disabled"].includes(option) || item.data.data.treasure)
       ) {
         return acc + item.data.data.quantity.value * item.data.data.weight;
       }
       if (
-        ["weapon", "armor", "container"].includes(item.type) &&
+        (item.data.type === "weapon" ||
+          item.data.type === "armor" ||
+          item.data.type === "container") &&
         option !== "basic"
       ) {
         return acc + item.data.data.weight;
@@ -597,7 +679,11 @@ export class OseActor extends Actor {
     const percentSteps = steps.map((s) => (100 * s) / max);
 
     data.encumbrance = {
-      pct: Math.clamped((100 * parseFloat(totalWeight)) / max, 0, 100),
+      pct: Math.clamped(
+        (100 * parseFloat(totalWeight.toString())) / max,
+        0,
+        100
+      ),
       max: max,
       encumbered: totalWeight > data.encumbrance.max,
       value: totalWeight,
@@ -610,6 +696,9 @@ export class OseActor extends Actor {
   }
 
   _calculateMovement() {
+    if (this.data.type === "monster") {
+      return;
+    }
     const data = this.data.data;
     const option = game.settings.get("ose", "encumbranceOption");
     const weight = data.encumbrance.value;
@@ -627,9 +716,11 @@ export class OseActor extends Actor {
         data.movement.base = 120;
       }
     } else if (option === "basic") {
-      const armors = this.data.items.filter((i) => i.type === "armor");
       let heaviest = 0;
-      armors.forEach((a) => {
+      this.data.items.forEach((a) => {
+        if (a.data.type !== "armor") {
+          return;
+        }
         const armorData = a.data.data;
         const weight = armorData.type;
         const equipped = armorData.equipped;
@@ -667,11 +758,10 @@ export class OseActor extends Actor {
     const data = this.data.data;
     // Compute treasure
     let total = 0;
-    let treasure = this.data.items.filter(
-      (i) => i.type == "item" && i.data.data.treasure
-    );
-    treasure.forEach((item) => {
-      total += item.data.data.quantity.value * item.data.data.cost;
+    this.data.items.forEach((item) => {
+      if (item.data.type === "item" && item.data.data.treasure) {
+        total += item.data.data.quantity.value * item.data.data.cost;
+      }
     });
     data.treasure = Math.round(total * 100) / 100.0;
   }
@@ -691,10 +781,15 @@ export class OseActor extends Actor {
     data.aac.naked = baseAac + data.scores.dex.mod;
     data.ac.naked = baseAc - data.scores.dex.mod;
     const armors = this.data.items.filter((i) => i.type == "armor");
-    armors.forEach((a) => {
+    this.data.items.forEach((a) => {
+      if (a.data.type !== "armor") {
+        return;
+      }
       const armorData = a.data.data;
       if (!armorData.equipped) return;
       if (armorData.type == "shield") {
+        // this is not as it's defined in template.json...
+        // I also can't seem to find any derived that changes the format of armor data.
         AcShield = armorData.ac.value;
         AacShield = armorData.aac.value;
         return;

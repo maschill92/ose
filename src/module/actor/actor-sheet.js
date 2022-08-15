@@ -435,6 +435,11 @@ export class OseActorSheet extends ActorSheet {
     return buttons;
   }
 
+  /**
+   * 
+   * @param {JQuery} html 
+   * @returns 
+   */
   activateListeners(html) {
     super.activateListeners(html);
 

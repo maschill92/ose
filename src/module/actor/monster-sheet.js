@@ -165,7 +165,7 @@ export class OseActorSheetMonster extends OseActorSheet {
             icon: '<i class="fas fa-check"></i>',
             callback: (html) => {
               let hd = html.find('input[name="hd"]').val();
-              this.actor.generateSave(hd);
+              this.actor.generateSave({ hd });
             },
           },
           cancel: {
