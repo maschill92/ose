@@ -11,6 +11,7 @@ declare global {
     // See documentation for LenientGlobalVariableTypes in @league-of-foundry-developers/foundry-vtt-types
     game: never;
     canvas: never;
+    ui: never;
   }
 
   interface CONFIG {
@@ -22,6 +23,12 @@ declare global {
       rollItemMacro: (itemName: string) => Promise<void>;
       oseCombat: OseCombat;
     };
+  }
+
+  namespace Game {
+    interface PackageData<T> {
+      id: "ose";
+    }
   }
 
   interface SourceConfig {
@@ -37,5 +44,18 @@ declare global {
   interface DocumentClassConfig {
     Actor: typeof OseActor;
     Item: typeof OseItem;
+  }
+
+  interface FlagConfig {
+    Actor: {
+      ose: {
+        party: boolean;
+      };
+    };
+    RollTable: {
+      ose: {
+        treasure: boolean;
+      };
+    };
   }
 }
