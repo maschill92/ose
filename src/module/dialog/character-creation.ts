@@ -1,7 +1,19 @@
+//@ts-check
 import { OseDice } from "../dice";
 import { OSE } from "../config";
+import { OseActorSheet } from "../actor/actor-sheet";
+import { OseActor } from "../actor/entity";
+import { ActorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/module.mjs";
 
-export class OseCharacterCreator extends FormApplication {
+interface OseCharacterCreatorOptions extends FormApplicationOptions {}
+
+interface OseCharacterCreatorData
+  extends FormApplication.Data<OseActor, OseCharacterCreatorOptions> {}
+
+export class OseCharacterCreator extends FormApplication<
+  OseCharacterCreatorOptions,
+  OseCharacterCreatorData
+> {
   static get defaultOptions() {
     const options = super.defaultOptions;
     (options.classes = ["ose", "dialog", "creator"]),
@@ -27,27 +39,29 @@ export class OseCharacterCreator extends FormApplication {
    * Construct and return the data object used to render the HTML template for this form application.
    * @return {Object}
    */
-  getData() {
-    let data = foundry.utils.deepClone(this.object.data);
-    data.user = game.user;
-    data.config = CONFIG.OSE;
-    this.counters = {
-      str: 0,
-      wis: 0,
-      dex: 0,
-      int: 0,
-      cha: 0,
-      con: 0,
-      gold: 0,
-    };
-    this.stats = {
-      sum: 0,
-      avg: 0,
-      std: 0,
-    };
-    this.scores = {};
-    this.gold = 0;
-    return data;
+  async getData(): OseCharacterCreatorData {
+    return {};
+    // this.counters = {
+    //   str: 0,
+    //   wis: 0,
+    //   dex: 0,
+    //   int: 0,
+    //   cha: 0,
+    //   con: 0,
+    //   gold: 0,
+    // };
+    // this.stats = {
+    //   sum: 0,
+    //   avg: 0,
+    //   std: 0,
+    // };
+    // this.scores = {};
+    // this.gold = 0;
+    // return {
+    //   ...foundry.utils.deepClone(this.object.data),
+    //   user: game.user,
+    //   config: CONFIG.OSE,
+    // };
   }
 
   /* -------------------------------------------- */
@@ -116,9 +130,15 @@ export class OseCharacterCreator extends FormApplication {
     });
   }
 
-  async close(options) {
+  /**
+   *
+   * @param options
+   * @returns
+   */
+  override async close(...args: Parameters<FormApplication["close"]>) {
+    const [options] = args;
     // Gather scores
-    const speaker = ChatMessage.getSpeaker({ actor: this });
+    const speaker = ChatMessage.getSpeaker({ actor: this.object });
     const templateData = {
       config: CONFIG.OSE,
       scores: this.scores,
@@ -212,6 +232,9 @@ export class OseCharacterCreator extends FormApplication {
     await this.object.update(formData);
 
     // Re-draw the updated sheet
-    this.object.sheet.render(true);
+    this.object.sheet?.render(true);
   }
+}
+async function b() {
+  const a = await new OseCharacterCreator({}, {}).getData();
 }
