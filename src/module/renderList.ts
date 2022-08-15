@@ -1,36 +1,34 @@
-//@ts-check
 import { OseItem } from "./item/entity";
 import { OSE } from "./config";
 
-export const RenderCompendium = async function (object, html, d) {
-  if (object.documentName != "Item") {
+export const RenderCompendium = async function (
+  object: Compendium<CompendiumCollection.Metadata>,
+  html: JQuery,
+  d: Compendium.Data<CompendiumCollection.Metadata>
+) {
+  if (object.metadata.type !== "Item") {
     return;
   }
-  const render = html[0].querySelectorAll(".item");
+  const render = html.find(".item");
   const docs = await d.collection.getDocuments();
 
-  render.forEach(async function (item, i) {
-    const id = render[i].dataset.documentId;
+  render.each(function (_, item) {
+    const id = item.dataset.documentId;
 
     const element = docs.filter((d) => d.id === id)[0];
-    const tagTemplate = $.parseHTML(
-      await renderTemplate(
-        `${OSE.systemPath()}/templates/actors/partials/item-auto-tags-partial.html`,
-        { tags: OseItem.prototype.getAutoTagList.call(element) }
-      )
-    );
-
-    $(item).append(tagTemplate);
+    renderTemplate(
+      `${OSE.systemPath()}/templates/actors/partials/item-auto-tags-partial.html`,
+      { tags: OseItem.prototype.getAutoTagList.call(element) }
+    ).then((s) => {
+      $(item).append($.parseHTML(s));
+    });
   });
 };
 
-/**
- *
- * @param {ItemDirectory} object
- * @param {JQuery} html
- * @returns
- */
-export const RenderItemDirectory = async function (object, html) {
+export const RenderItemDirectory = async function (
+  object: ItemDirectory,
+  html: JQuery
+) {
   if (object.id != "items") {
     return;
   }
@@ -38,7 +36,7 @@ export const RenderItemDirectory = async function (object, html) {
   const render = html.find(".item");
   const content = object.documents;
 
-  render.each(function (idx, item) {
+  render.each(function (_, item) {
     const foundryDocument = content.find(
       (e) => e.id == item.dataset.documentId
     );
