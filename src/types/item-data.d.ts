@@ -103,8 +103,9 @@ interface ItemDataSourceArmorData
   extends ItemDataSourceTemplateCommon,
     ItemDataSourceTemplatePhysical,
     ItemDataSourceTemplateEquippable {
-  ac: number;
-  aac: string;
+  // TODO: ac and aac are defined in template.json as number, but they are used every where as the structure defined here. template.json should be updated.
+  ac: { value: number };
+  aac: { value: number };
   type: ArmorType;
 }
 interface ItemDataSourceArmor {
