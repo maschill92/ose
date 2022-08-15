@@ -1,6 +1,7 @@
+import { OseActor } from "./actor/entity";
 import { OsePartySheet } from "./party/party-sheet";
 
-export const addControl = (object, html) => {
+export const addControl = (object: ActorDirectory, html: JQuery) => {
   let control = `<button class='ose-party-sheet' type="button" title='${game.i18n.localize(
     "OSE.dialog.partysheet"
   )}'><i class='fas fa-users'></i></button>`;
@@ -11,12 +12,12 @@ export const addControl = (object, html) => {
   });
 };
 
-export const update = (actor, data) => {
+export const update = (actor: OseActor, data: never) => {
   const partyFlag = actor.getFlag(game.system.id, "party");
 
   if (partyFlag === null) {
     return;
   }
 
-  OsePartySheet.partySheet.render();
+  OsePartySheet.partySheet?.render();
 };
