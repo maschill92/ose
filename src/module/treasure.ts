@@ -74,10 +74,10 @@ function drawTreasure(table: RollTable, data: DrawTreasureData = {}) {
    * @param {number} chance
    * @returns
    */
-  const percent = (chance = -1) => {
+  const percent = (chance = -1): boolean => {
     const roll = new Roll("1d100");
     roll.evaluate({ async: false });
-    return roll.total ?? -1 <= chance;
+    return (roll.total ?? -1) <= chance;
   };
   data.treasure = {};
   if (table.getFlag(game.system.id, "treasure")) {
