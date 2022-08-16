@@ -1,34 +1,25 @@
-//@ts-check
 import { OsePartyXP } from "./party-xp";
 import { OseParty } from "./party";
-import { OSE } from "../config";
+import { OSE, OseConfig } from "../config";
 import { OseActor } from "../actor/entity";
 
-/**
- * @type {{partySheet?: OsePartySheet}}
- */
-const Party = {
+const Party: { partySheet?: OsePartySheet } = {
   partySheet: void 0,
 };
 
-/**
- * @typedef {FormApplicationOptions} OsePartySheetOptions
- */
-/**
- * @typedef {{partyActors: OseActor[], config: import("../config").OseConfig, user: User; settings: {ascending: boolean}}} OsePartySheetData
- */
+interface OsePartySheetOptions extends FormApplicationOptions {}
 
-export class OsePartySheet extends FormApplication {
-  /**
-   *
-   * @protected
-   * @override
-   * @param {Event} event
-   * @param {object | undefined} formData
-   */
-  async _updateObject(event, formData) {
-    throw new Error("Method not implemented.");
-  }
+interface OsePartySheetData {
+  partyActors: OseActor[];
+  config: OseConfig;
+  user: User;
+  settings: { ascending: boolean };
+}
+
+export class OsePartySheet extends FormApplication<
+  OsePartySheetOptions,
+  OsePartySheetData
+> {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["ose", "dialog", "party-sheet"],
@@ -69,31 +60,22 @@ export class OsePartySheet extends FormApplication {
 
   /**
    * Construct and return the data object used to render the HTML template for this form application.
-   * @return {OsePartySheetData}
    */
-  // @ts-ignore
-  getData() {
+  override getData(): OsePartySheetData {
     const settings = {
       ascending: game.settings.get("ose", "ascendingAC"),
     };
 
     let data = {
       partyActors: OseParty.currentParty,
-      // data: this.object,
       config: CONFIG.OSE,
-      user: game.user,
+      user: game.user!,
       settings: settings,
     };
-    // @ts-ignore
     return data;
   }
 
-  /**
-   *
-   * @param {OseActor} actor
-   * @returns
-   */
-  async _addActorToParty(actor) {
+  async _addActorToParty(actor: OseActor): Promise<void> {
     if (actor.type !== "character") {
       return;
     }
@@ -101,12 +83,7 @@ export class OsePartySheet extends FormApplication {
     await actor.setFlag(game.system.id, "party", true);
   }
 
-  /**
-   *
-   * @param {OseActor} actor
-   * @returns
-   */
-  async _removeActorFromParty(actor) {
+  async _removeActorFromParty(actor: OseActor): Promise<void> {
     await actor.setFlag(game.system.id, "party", false);
   }
 
@@ -116,57 +93,44 @@ export class OsePartySheet extends FormApplication {
 
   /**
    * Adding to the Party Sheet
-   * @param {DragEvent} event
-   * @returns
    */
-  _onDrop(event) {
+  _onDrop(event: DragEvent) {
     event.preventDefault();
 
     // WIP Drop Items
-    let data;
     try {
-      // @ts-ignore
-      data = JSON.parse(event.dataTransfer.getData("text/plain"));
+      debugger;
+      // TODO: Consider using Actor/Folder.fromDropData
+      const data = JSON.parse(event.dataTransfer!.getData("text/plain"));
 
       switch (data.type) {
         case "Actor":
-          return this._onDropActor(event, data);
+          return this._onDropActor(data);
         case "Folder":
-          return this._onDropFolder(event, data);
+          return this._onDropFolder(data);
       }
     } catch (err) {
       return false;
     }
   }
 
-  /**
-   *
-   * @param {Event} event
-   * @param {*} data
-   * @returns
-   */
-  _onDropActor(event, data) {
+  _onDropActor(data: any) {
     if (data.type !== "Actor") {
       return;
     }
 
     const actors = game.actors;
-    // @ts-ignore
-    let droppedActor = actors.find((actor) => actor.id === data.id);
+    let droppedActor = actors?.find((actor) => actor.id === data.id);
 
-    // @ts-ignore
-    this._addActorToParty(droppedActor);
+    if (droppedActor) {
+      this._addActorToParty(droppedActor);
+    }
   }
 
-  /**
-   *
-   * @param {Folder} folder
-   */
-  _recursiveAddFolder(folder) {
-    debugger;
+  _recursiveAddFolder(folder: Folder) {
     folder.contents.forEach((actor) => {
+      debugger;
       if (actor instanceof OseActor) {
-        debugger;
         this._addActorToParty(actor);
       }
     });
@@ -175,19 +139,12 @@ export class OsePartySheet extends FormApplication {
       .forEach((folder) => this._recursiveAddFolder(folder));
   }
 
-  /**
-   *
-   * @param {Event} event
-   * @param {*} data
-   * @returns
-   */
-  _onDropFolder(event, data) {
-    if (data.documentName !== "Actor") {
+  _onDropFolder(data: any) {
+    if (data.type !== "Folder") {
       return;
     }
 
-    // @ts-ignore
-    const folder = game.folders.get(data.id);
+    const folder = game.folders?.get(data.id);
     if (!folder) return;
 
     this._recursiveAddFolder(folder);
@@ -198,10 +155,10 @@ export class OsePartySheet extends FormApplication {
    * @param {DragEvent} event
    * @returns
    */
-  _onDragStart(event) {
+  _onDragStart(event: DragEvent) {
     try {
-      // @ts-ignore
-      const actorId = event.currentTarget.dataset.actorId;
+      debugger;
+      const actorId = (event.currentTarget as HTMLElement)?.dataset?.actorId;
 
       const dragData = {
         id: actorId,
@@ -209,8 +166,7 @@ export class OsePartySheet extends FormApplication {
       };
 
       // Set data transfer
-      // @ts-ignore
-      event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
+      event.dataTransfer?.setData("text/plain", JSON.stringify(dragData));
     } catch (error) {
       return false;
     }
@@ -224,37 +180,36 @@ export class OsePartySheet extends FormApplication {
     new OsePartyXP(this.object, {}).render(true);
   }
 
-  /**
-   * @override
-   * @param {JQuery} html
-   */
-  activateListeners(html) {
+  override activateListeners(html: JQuery) {
     super.activateListeners(html);
 
     html.find(".header #deal-xp").click(() => this._dealXP());
 
     // Actor buttons
-    /**
-     *
-     * @param {JQuery.ClickEvent} event
-     * @returns {Actor}
-     */
-    const getActor = (event) => {
+
+    const getActor = (event: JQuery.ClickEvent): OseActor | null => {
       const id = event.currentTarget.closest(".actor").dataset.actorId;
-      // @ts-ignore
-      return game.actors.get(id);
+      return game.actors?.get(id) ?? null;
     };
 
     html.find(".field-img button[data-action='open-sheet']").click((event) => {
-      // @ts-ignore
-      getActor(event).sheet.render(true);
+      getActor(event)?.sheet?.render(true);
     });
 
     html
       .find(".field-img button[data-action='remove-actor']")
       .click(async (event) => {
-        // @ts-ignore
-        await this._removeActorFromParty(getActor(event));
+        const actor = getActor(event);
+        if (actor) {
+          await this._removeActorFromParty(actor);
+        }
       });
+  }
+
+  /**
+   * Overriding as it's an abstract function on FormApplication. Perhaps this class should extend Application instead?
+   */
+  protected _updateObject(): Promise<unknown> {
+    return Promise.resolve();
   }
 }
