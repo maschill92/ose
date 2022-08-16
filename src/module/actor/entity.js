@@ -1,4 +1,3 @@
-//@ts-check
 import { OseDice } from "../dice";
 import { OseItem } from "../item/entity";
 
