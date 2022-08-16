@@ -1,9 +1,6 @@
-//@ts-check
 import { OseDice } from "../dice";
 import { Attribute, OSE, OseConfig } from "../config";
-import { OseActorSheet } from "../actor/actor-sheet";
 import { OseActor } from "../actor/entity";
-import { ActorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/module.mjs";
 
 interface OseCharacterCreatorOptions extends FormApplicationOptions {}
 
@@ -13,6 +10,9 @@ interface OseCharacterCreatorData
   config: OseConfig;
 }
 
+/**
+ * Dialog to generate a new character. Supports rolling of attribute scores and gold.
+ */
 export class OseCharacterCreator extends FormApplication<
   OseCharacterCreatorOptions,
   OseCharacterCreatorData
@@ -23,7 +23,7 @@ export class OseCharacterCreator extends FormApplication<
     avg: number;
     std: number;
   } | null = null;
-  scores: Record<Attribute, {value: number}> | null = null;
+  scores: Record<Attribute, { value: number }> | null = null;
   gold: number | null = null;
 
   static get defaultOptions() {
@@ -50,9 +50,9 @@ export class OseCharacterCreator extends FormApplication<
    * Construct and return the data object used to render the HTML template for this form application.
    */
   override async getData(): Promise<OseCharacterCreatorData> {
-    let data = await super.getData()
+    let data = await super.getData();
     if (!game.user) {
-      throw new Error('Unable to get game.user');
+      throw new Error("Unable to get game.user");
     }
     data.user = game.user;
     data.config = CONFIG.OSE;
@@ -72,19 +72,19 @@ export class OseCharacterCreator extends FormApplication<
     };
     this.scores = {
       str: { value: 0 },
-      wis: {value: 0},
-      dex: {value: 0},
-      int: {value: 0},
-      cha: {value: 0},
-      con: {value: 0}
+      wis: { value: 0 },
+      dex: { value: 0 },
+      int: { value: 0 },
+      cha: { value: 0 },
+      con: { value: 0 },
     };
     this.gold = 0;
     return data;
-  },
+  }
 
   /* -------------------------------------------- */
 
-  doStats(ev: JQuery.UIEventBase) {
+  doStats(ev: JQuery.TriggeredEvent) {
     const list = $(ev.currentTarget!).closest(".attribute-list");
     const scores = Object.values(this.scores!);
     const n = scores.length;
@@ -117,7 +117,10 @@ export class OseCharacterCreator extends FormApplication<
     };
   }
 
-  rollScore(score: Attribute | "gold", options: {skipMessage?: boolean, event?: JQuery.Event} = {}) {
+  rollScore(
+    score: Attribute | "gold",
+    options: { skipMessage?: boolean; event?: JQuery.Event } = {}
+  ) {
     // Increase counter
     this.counters![score]++;
 
@@ -215,7 +218,14 @@ export class OseCharacterCreator extends FormApplication<
     });
   }
 
-  protected override _onSubmit(event: Event, { updateData, preventClose = false, preventRender = false }: FormApplication.OnSubmitOptions | undefined = {}): Promise<Partial<Record<string, unknown>>> {
+  protected override async _onSubmit(
+    event: Event,
+    {
+      updateData,
+      preventClose = false,
+      preventRender = false,
+    }: FormApplication.OnSubmitOptions | undefined = {}
+  ): Promise<Partial<Record<string, unknown>>> {
     updateData = { ...updateData, data: { scores: this.scores } };
     await super._onSubmit(event, {
       updateData: updateData,
@@ -223,19 +233,22 @@ export class OseCharacterCreator extends FormApplication<
       preventRender: preventRender,
     });
     // Generate gold
-    this.object.createEmbeddedDocuments("Item", [{
-      name: game.i18n.localize("OSE.items.gp.short"),
-      type: "item",
-      img: "systems/ose/assets/gold.png",
-      data: {
-        treasure: true,
-        cost: 1,
-        weight: 1,
-        quantity: {
-          value: this.gold || 0,
+    this.object.createEmbeddedDocuments("Item", [
+      {
+        name: game.i18n.localize("OSE.items.gp.short"),
+        type: "item",
+        img: "systems/ose/assets/gold.png",
+        data: {
+          treasure: true,
+          cost: 1,
+          weight: 1,
+          quantity: {
+            value: this.gold || 0,
+          },
         },
       },
-    }]);
+    ]);
+    return {};
   }
   /**
    * This method is called upon form submission after form data is validated
@@ -243,7 +256,10 @@ export class OseCharacterCreator extends FormApplication<
    * @param formData {Object}   The object of validated form data with which to update the object
    * @private
    */
-  protected async _updateObject(event: Event, formData?: object | undefined): Promise<void> {
+  protected async _updateObject(
+    event: Event,
+    formData?: object | undefined
+  ): Promise<void> {
     event.preventDefault();
     // Update the actor
     await this.object.update(formData);
