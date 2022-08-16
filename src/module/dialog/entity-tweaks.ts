@@ -1,7 +1,15 @@
-//@ts-check
-import { OSE } from "../config";
+import { OseActor } from "../actor/entity";
+import { OSE, OseConfig } from "../config";
 
-export class OseEntityTweaks extends FormApplication {
+interface OseEntityTweaksOptions extends FormApplicationOptions {}
+
+interface OseEntityTweaksData
+  extends FormApplication.Data<OseActor, OseEntityTweaksOptions> {}
+
+export class OseEntityTweaks extends FormApplication<
+  OseEntityTweaksOptions,
+  OseEntityTweaksData
+> {
   static get defaultOptions() {
     const options = super.defaultOptions;
     options.id = "sheet-tweaks";
@@ -17,7 +25,6 @@ export class OseEntityTweaks extends FormApplication {
    * @type {String}
    */
   get title() {
-    // @ts-ignore
     return `${this.object.name}: ${game.i18n.localize("OSE.dialog.tweaks")}`;
   }
 
@@ -27,26 +34,28 @@ export class OseEntityTweaks extends FormApplication {
    * Construct and return the data object used to render the HTML template for this form application.
    * @return {Object}
    */
-  // @ts-ignore
-  getData() {
-    // @ts-ignore
+  getData(): OseEntityTweaksData {
     const data = foundry.utils.deepClone(this.object.data);
+
     if (data.type === "character") {
+      // @ts-ignore modifies Actor data
       data.isCharacter = true;
     }
+    // @ts-ignore modifies Actor data
     data.user = game.user;
+    // @ts-ignore modifies Actor data
     data.config = {
       ...CONFIG.OSE,
       ascendingAC: game.settings.get("ose", "ascendingAC"),
     };
+    // @ts-ignore
     return data;
   }
 
   /* -------------------------------------------- */
 
   /** @override */
-  // @ts-ignore
-  activateListeners(html) {
+  activateListeners(html: JQuery) {
     super.activateListeners(html);
   }
 
@@ -56,8 +65,7 @@ export class OseEntityTweaks extends FormApplication {
    * @param formData {Object}   The object of validated form data with which to update the object
    * @private
    */
-  // @ts-ignore
-  async _updateObject(event, formData) {
+  async _updateObject(event: Event, formData: object) {
     event.preventDefault();
     // Update the actor
     // @ts-ignore
