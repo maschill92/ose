@@ -1,6 +1,3 @@
-// import { ActorDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData";
-// import { ActorDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData";
-import { Attribute, ExplorationSkill, Save } from "../config";
 import { OseDice } from "../dice";
 import { OseItem } from "../item/entity";
 
@@ -36,14 +33,11 @@ export class OseActor extends Actor {
   }
 
   /**
-   * 
-   * @param {DeepPartial<import("@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData").ActorDataConstructorData>} data 
-   * @param {*} options 
+   *
+   * @param {DeepPartial<import("@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData").ActorDataConstructorData>} data
+   * @param {*} options
    */
-  static async update(
-    data,
-    options = {}
-  ) {
+  static async update(data, options = {}) {
     // Compute AAC from AC
     if (data.data?.ac?.value) {
       data.data.aac = { value: 19 - data.data.ac.value };
@@ -62,11 +56,11 @@ export class OseActor extends Actor {
   }
 
   /**
-   * 
-   * @param {string} embeddedName 
-   * @param {DeepPartial<import("@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/itemData").ItemDataConstructorData>[]} data 
-   * @param {*} context 
-   * @returns 
+   *
+   * @param {string} embeddedName
+   * @param {DeepPartial<import("@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/itemData").ItemDataConstructorData>[]} data
+   * @param {*} context
+   * @returns
    */
   async createEmbeddedDocuments(embeddedName, data = [], context = {}) {
     data.map((item) => {
@@ -81,9 +75,9 @@ export class OseActor extends Actor {
   /*  Socket Listeners and Handlers
     /* -------------------------------------------- */
   /**
-   * 
-   * @param {number} value 
-   * @returns 
+   *
+   * @param {number} value
+   * @returns
    */
   getExperience(value) {
     if (this.data.type != "character") {
@@ -107,7 +101,7 @@ export class OseActor extends Actor {
   }
 
   /**
-   * 
+   *
    * @returns {boolean}
    */
   isNew() {
@@ -196,10 +190,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollSave(
-    save,
-    options = {}
-  ) {
+  rollSave(save, options = {}) {
     const label = game.i18n.localize(`OSE.saves.${save}.long`);
     const rollParts = ["1d20"];
 
@@ -324,10 +315,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollCheck(
-    score,
-    options = {}
-  ) {
+  rollCheck(score, options = {}) {
     if (this.data.type !== "character") return;
 
     const label = game.i18n.localize(`OSE.scores.${score}.long`);
@@ -360,7 +348,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollHitDice(options= {}) {
+  rollHitDice(options = {}) {
     const label = game.i18n.localize(`OSE.roll.hd`);
     const rollParts = [this.data.data.hp.hd];
     if (this.data.type == "character") {
@@ -419,10 +407,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollExploration(
-    expl,
-    options = {}
-  ) {
+  rollExploration(expl, options = {}) {
     if (this.data.type !== "character") return;
 
     const label = game.i18n.localize(`OSE.exploration.${expl}.long`);
