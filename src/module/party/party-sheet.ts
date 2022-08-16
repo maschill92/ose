@@ -99,7 +99,6 @@ export class OsePartySheet extends FormApplication<
 
     // WIP Drop Items
     try {
-      debugger;
       // TODO: Consider using Actor/Folder.fromDropData
       const data = JSON.parse(event.dataTransfer!.getData("text/plain"));
 
@@ -129,7 +128,6 @@ export class OsePartySheet extends FormApplication<
 
   _recursiveAddFolder(folder: Folder) {
     folder.contents.forEach((actor) => {
-      debugger;
       if (actor instanceof OseActor) {
         this._addActorToParty(actor);
       }
@@ -157,7 +155,6 @@ export class OsePartySheet extends FormApplication<
    */
   _onDragStart(event: DragEvent) {
     try {
-      debugger;
       const actorId = (event.currentTarget as HTMLElement)?.dataset?.actorId;
 
       const dragData = {
