@@ -16,9 +16,9 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "noEmit": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "noImplicitReturns": true,
     "allowUmdGlobalAccess": true
   },
   "include": ["src/**/*.js", "src/**/*.ts", "src/**/*.d.ts"]
