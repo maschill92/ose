@@ -1,5 +1,13 @@
+//@ts-check
 import { OSE } from "./config";
 
+/**
+ *
+ * @param {RollTableConfig} table
+ * @param {JQuery} html
+ * @param {import("@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/rollTableData").RollTableDataConstructorData} data
+ * @returns
+ */
 export const augmentTable = (table, html, data) => {
   // Treasure Toggle
   const isTreasureTable = Boolean(
@@ -38,6 +46,7 @@ export const augmentTable = (table, html, data) => {
 
   let formula = html.find("input[name=formula]");
   formula.attr("value", "1d100");
+  //@ts-ignore
   formula.attr("disabled", true);
 
   // Replace Roll button
@@ -51,33 +60,51 @@ export const augmentTable = (table, html, data) => {
   });
 };
 
+/**
+ *
+ * @param {RollTable} table
+ * @param {*} data
+ * @returns
+ */
 function drawTreasure(table, data) {
-  const percent = (chance) => {
+  /**
+   *
+   * @param {number} chance
+   * @returns
+   */
+  const percent = (chance = -1) => {
     const roll = new Roll("1d100");
     roll.evaluate({ async: false });
-    return roll.total <= chance;
+    return roll.total ?? -1 <= chance;
   };
   data.treasure = {};
   if (table.getFlag(game.system.id, "treasure")) {
     table.results.forEach((r) => {
-      if (percent(r.data.weight)) {
-        const text = r.getChatText(r);
+      if (percent(r.data.weight) && r.id) {
+        const text = r.getChatText();
         data.treasure[r.id] = {
           img: r.data.img,
           text: TextEditor.enrichHTML(text),
         };
         if (
           r.data.type === CONST.TABLE_RESULT_TYPES.DOCUMENT &&
-          r.data.collection === "RollTable"
+          r.data.collection === "RollTable" &&
+          r.data.resultId
         ) {
-          const embeddedTable = game.tables.get(r.data.resultId);
-          drawTreasure(embeddedTable, data.treasure[r.id]);
+          const embeddedTable = game.tables?.get(r.data.resultId);
+          if (embeddedTable) {
+            drawTreasure(embeddedTable, data.treasure[r.id]);
+          }
         }
       }
     });
   } else {
+    // FIXME: This API is no longer available? Treasure tables should probably be a custom type.
+    //@ts-ignore
     const results = table.evaluate({ async: false }).results;
+    // @ts-ignore
     results.forEach((s) => {
+      // @ts-ignore
       const text = TextEditor.enrichHTML(table._getResultChatText(s));
       data.treasure[s.id] = { img: s.data.img, text: text };
     });
@@ -85,6 +112,11 @@ function drawTreasure(table, data) {
   return data;
 }
 
+/**
+ *
+ * @param {RollTable} table
+ * @param {*} options
+ */
 async function rollTreasure(table, options = {}) {
   // Draw treasure
   const data = drawTreasure(table, {});
@@ -100,7 +132,7 @@ async function rollTreasure(table, options = {}) {
       .find(".table-result");
     results.each((_, item) => {
       item.classList.remove("active");
-      if (data.treasure[item.dataset.resultId]) {
+      if (item.dataset.resultId && data.treasure[item.dataset.resultId]) {
         item.classList.add("active");
       }
     });
@@ -111,6 +143,9 @@ async function rollTreasure(table, options = {}) {
     templateData
   );
 
+  /**
+   * @type {import("@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/chatMessageData").ChatMessageDataConstructorData}
+   */
   let chatData = {
     content: html,
     // sound: "systems/ose/assets/coins.mp3"
@@ -119,7 +154,8 @@ async function rollTreasure(table, options = {}) {
   let rollMode = game.settings.get("core", "rollMode");
   if (["gmroll", "blindroll"].includes(rollMode))
     chatData["whisper"] = ChatMessage.getWhisperRecipients("GM");
-  if (rollMode === "selfroll") chatData["whisper"] = [game.user._id];
+  if (rollMode === "selfroll")
+    chatData["whisper"] = game.user?.id ? [game.user.id] : null;
   if (rollMode === "blindroll") chatData["blind"] = true;
 
   ChatMessage.create(chatData);
