@@ -1,12 +1,34 @@
+//@ts-check
 import { OsePartyXP } from "./party-xp";
 import { OseParty } from "./party";
 import { OSE } from "../config";
+import { OseActor } from "../actor/entity";
 
+/**
+ * @type {{partySheet?: OsePartySheet}}
+ */
 const Party = {
   partySheet: void 0,
 };
 
+/**
+ * @typedef {FormApplicationOptions} OsePartySheetOptions
+ */
+/**
+ * @typedef {{partyActors: OseActor[], config: import("../config").OseConfig, user: User; settings: {ascending: boolean}}} OsePartySheetData
+ */
+
 export class OsePartySheet extends FormApplication {
+  /**
+   *
+   * @protected
+   * @override
+   * @param {Event} event
+   * @param {object | undefined} formData
+   */
+  async _updateObject(event, formData) {
+    throw new Error("Method not implemented.");
+  }
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["ose", "dialog", "party-sheet"],
@@ -22,11 +44,11 @@ export class OsePartySheet extends FormApplication {
   }
 
   static init() {
-    Party.partySheet = new OsePartySheet();
+    Party.partySheet = new OsePartySheet({});
   }
 
   static showPartySheet(options = {}) {
-    OsePartySheet.partySheet.render(true, { focus: true, ...options });
+    OsePartySheet.partySheet?.render(true, { focus: true, ...options });
   }
 
   static get partySheet() {
@@ -47,8 +69,9 @@ export class OsePartySheet extends FormApplication {
 
   /**
    * Construct and return the data object used to render the HTML template for this form application.
-   * @return {Object}
+   * @return {OsePartySheetData}
    */
+  // @ts-ignore
   getData() {
     const settings = {
       ascending: game.settings.get("ose", "ascendingAC"),
@@ -61,9 +84,15 @@ export class OsePartySheet extends FormApplication {
       user: game.user,
       settings: settings,
     };
+    // @ts-ignore
     return data;
   }
 
+  /**
+   *
+   * @param {OseActor} actor
+   * @returns
+   */
   async _addActorToParty(actor) {
     if (actor.type !== "character") {
       return;
@@ -72,6 +101,11 @@ export class OsePartySheet extends FormApplication {
     await actor.setFlag(game.system.id, "party", true);
   }
 
+  /**
+   *
+   * @param {OseActor} actor
+   * @returns
+   */
   async _removeActorFromParty(actor) {
     await actor.setFlag(game.system.id, "party", false);
   }
@@ -80,13 +114,18 @@ export class OsePartySheet extends FormApplication {
   /* --Drag&Drop Behavior-- */
   /* ---------------------- */
 
-  /* - Adding to the Party Sheet -*/
+  /**
+   * Adding to the Party Sheet
+   * @param {DragEvent} event
+   * @returns
+   */
   _onDrop(event) {
     event.preventDefault();
 
     // WIP Drop Items
     let data;
     try {
+      // @ts-ignore
       data = JSON.parse(event.dataTransfer.getData("text/plain"));
 
       switch (data.type) {
@@ -100,36 +139,68 @@ export class OsePartySheet extends FormApplication {
     }
   }
 
+  /**
+   *
+   * @param {Event} event
+   * @param {*} data
+   * @returns
+   */
   _onDropActor(event, data) {
     if (data.type !== "Actor") {
       return;
     }
 
     const actors = game.actors;
+    // @ts-ignore
     let droppedActor = actors.find((actor) => actor.id === data.id);
 
+    // @ts-ignore
     this._addActorToParty(droppedActor);
   }
 
+  /**
+   *
+   * @param {Folder} folder
+   */
   _recursiveAddFolder(folder) {
-    folder.content.forEach((actor) => this._addActorToParty(actor));
-    folder.children.forEach((folder) => this._recursiveAddFolder(folder));
+    debugger;
+    folder.contents.forEach((actor) => {
+      if (actor instanceof OseActor) {
+        debugger;
+        this._addActorToParty(actor);
+      }
+    });
+    folder
+      .getSubfolders()
+      .forEach((folder) => this._recursiveAddFolder(folder));
   }
 
+  /**
+   *
+   * @param {Event} event
+   * @param {*} data
+   * @returns
+   */
   _onDropFolder(event, data) {
     if (data.documentName !== "Actor") {
       return;
     }
 
+    // @ts-ignore
     const folder = game.folders.get(data.id);
     if (!folder) return;
 
     this._recursiveAddFolder(folder);
   }
 
-  /* - Dragging from the Party Sheet - */
+  /**
+   * Dragging from the Party Sheet
+   * @param {DragEvent} event
+   * @returns
+   */
   _onDragStart(event) {
     try {
+      // @ts-ignore
       const actorId = event.currentTarget.dataset.actorId;
 
       const dragData = {
@@ -138,6 +209,7 @@ export class OsePartySheet extends FormApplication {
       };
 
       // Set data transfer
+      // @ts-ignore
       event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
     } catch (error) {
       return false;
@@ -148,29 +220,40 @@ export class OsePartySheet extends FormApplication {
 
   /* -------------------------------------------- */
 
-  async _dealXP(ev) {
+  async _dealXP() {
     new OsePartyXP(this.object, {}).render(true);
   }
 
-  /** @override */
+  /**
+   * @override
+   * @param {JQuery} html
+   */
   activateListeners(html) {
     super.activateListeners(html);
 
-    html.find(".header #deal-xp").click(this._dealXP.bind(this));
+    html.find(".header #deal-xp").click(() => this._dealXP());
 
     // Actor buttons
+    /**
+     *
+     * @param {JQuery.ClickEvent} event
+     * @returns {Actor}
+     */
     const getActor = (event) => {
       const id = event.currentTarget.closest(".actor").dataset.actorId;
+      // @ts-ignore
       return game.actors.get(id);
     };
 
     html.find(".field-img button[data-action='open-sheet']").click((event) => {
+      // @ts-ignore
       getActor(event).sheet.render(true);
     });
 
     html
       .find(".field-img button[data-action='remove-actor']")
       .click(async (event) => {
+        // @ts-ignore
         await this._removeActorFromParty(getActor(event));
       });
   }
