@@ -1,4 +1,3 @@
-//@ts-check
 // import { ActorDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData";
 // import { ActorDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData";
 import { Attribute, ExplorationSkill, Save } from "../config";
@@ -198,12 +197,8 @@ export class OseActor extends Actor {
   }
 
   rollSave(
-    save: Save,
-    options: {
-      event?: MouseEvent;
-      fastForward?: boolean;
-      chatMessage?: string;
-    } = {}
+    save,
+    options = {}
   ) {
     const label = game.i18n.localize(`OSE.saves.${save}.long`);
     const rollParts = ["1d20"];
@@ -237,7 +232,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollMorale(options: { event?: Event } = {}) {
+  rollMorale(options = {}) {
     if (this.data.type !== "monster") {
       return;
     }
@@ -263,7 +258,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollLoyalty(options: { event?: Event } = {}) {
+  rollLoyalty(options = {}) {
     const label = game.i18n.localize(`OSE.roll.loyalty`);
     const rollParts = ["2d6"];
 
@@ -287,7 +282,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollReaction(options: { event?: MouseEvent } = {}) {
+  rollReaction(options = {}) {
     const rollParts = ["2d6"];
 
     const data = {
@@ -330,12 +325,8 @@ export class OseActor extends Actor {
   }
 
   rollCheck(
-    score: Attribute,
-    options: {
-      event?: MouseEvent;
-      fastForward?: boolean;
-      chatMessage?: boolean;
-    } = {}
+    score,
+    options = {}
   ) {
     if (this.data.type !== "character") return;
 
@@ -369,7 +360,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollHitDice(options: { event?: Event } = {}) {
+  rollHitDice(options= {}) {
     const label = game.i18n.localize(`OSE.roll.hd`);
     const rollParts = [this.data.data.hp.hd];
     if (this.data.type == "character") {
@@ -395,7 +386,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollAppearing(options: { event?: MouseEvent; check?: string } = {}) {
+  rollAppearing(options = {}) {
     if (this.data.type !== "monster") return;
 
     const rollParts = [];
@@ -429,8 +420,8 @@ export class OseActor extends Actor {
   }
 
   rollExploration(
-    expl: ExplorationSkill,
-    options: { event?: MouseEvent } = {}
+    expl,
+    options = {}
   ) {
     if (this.data.type !== "character") return;
 
@@ -464,7 +455,7 @@ export class OseActor extends Actor {
     });
   }
 
-  rollDamage(attData, options: { event?: MouseEvent } = {}) {
+  rollDamage(attData, options = {}) {
     const data = this.data.data;
 
     const rollData = {
