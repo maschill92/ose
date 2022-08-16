@@ -1,11 +1,7 @@
-//@ts-check
 import { OseActor } from "../actor/entity";
 
 export class OseParty {
-  /**
-   * @returns {OseActor[]}
-   */
-  static get currentParty() {
+  static get currentParty(): OseActor[] {
     const characters = game.actors?.filter(
       (act) =>
         act.data.type === "character" &&
@@ -13,6 +9,6 @@ export class OseParty {
         act.data.flags.ose.party === true
     );
 
-    return characters || [];
+    return characters ?? [];
   }
 }
