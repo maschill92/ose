@@ -1,3 +1,4 @@
+//@ts-check
 import { OseDice } from "../dice";
 import { OseItem } from "../item/entity";
 
@@ -52,6 +53,7 @@ export class OseActor extends Actor {
       data.data.thac0.value = 19 - data.data.thac0.bba;
     }
 
+    //@ts-ignore Actor doesn't have a static update function?
     super.update(data, options);
   }
 
@@ -190,6 +192,12 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {import("../config").Save} save
+   * @param {RollOptions} options
+   * @returns
+   */
   rollSave(save, options = {}) {
     const label = game.i18n.localize(`OSE.saves.${save}.long`);
     const rollParts = ["1d20"];
@@ -223,6 +231,11 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {RollOptions} options
+   * @returns
+   */
   rollMorale(options = {}) {
     if (this.data.type !== "monster") {
       return;
@@ -249,6 +262,11 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {RollOptions} options
+   * @returns
+   */
   rollLoyalty(options = {}) {
     const label = game.i18n.localize(`OSE.roll.loyalty`);
     const rollParts = ["2d6"];
@@ -273,6 +291,11 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {RollOptions} options
+   * @returns
+   */
   rollReaction(options = {}) {
     const rollParts = ["2d6"];
 
@@ -315,6 +338,12 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {import("../config").Attribute} score
+   * @param {RollOptions} options
+   * @returns
+   */
   rollCheck(score, options = {}) {
     if (this.data.type !== "character") return;
 
@@ -348,6 +377,11 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {RollOptions} options
+   * @returns
+   */
   rollHitDice(options = {}) {
     const label = game.i18n.localize(`OSE.roll.hd`);
     const rollParts = [this.data.data.hp.hd];
@@ -374,6 +408,11 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {RollOptions & {check?: "wilderness" | "wilderness"}} options
+   * @returns
+   */
   rollAppearing(options = {}) {
     if (this.data.type !== "monster") return;
 
@@ -407,6 +446,12 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {import("../config").ExplorationSkill} expl
+   * @param {RollOptions} options
+   * @returns
+   */
   rollExploration(expl, options = {}) {
     if (this.data.type !== "character") return;
 
@@ -440,9 +485,12 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {*} attData
+   * @param {RollOptions} options
+   */
   rollDamage(attData, options = {}) {
-    const data = this.data.data;
-
     const rollData = {
       actor: this.data,
       item: attData.item,
@@ -475,9 +523,15 @@ export class OseActor extends Actor {
     });
   }
 
+  /**
+   *
+   * @param {*} data
+   * @param {*} type
+   * @param {*} options
+   */
   async targetAttack(data, type, options) {
-    if (game?.user?.targets?.size ?? -1 > 0) {
-      for (let t of game?.user.targets.values()) {
+    if (game?.user?.targets && game?.user?.targets.size > 0) {
+      for (let t of game.user.targets.values()) {
         data.roll.target = t;
         await this.rollAttack(data, {
           type: type,
@@ -489,6 +543,12 @@ export class OseActor extends Actor {
     }
   }
 
+  /**
+   *
+   * @param {*} attData
+   * @param {RollOptions & {type?: string; skipDialog?: boolean}} options
+   * @returns
+   */
   rollAttack(attData, options = {}) {
     const data = this.data.data;
     const rollParts = ["1d20"];
@@ -510,22 +570,22 @@ export class OseActor extends Actor {
       rollParts.push(data.thac0.bba.toString());
     }
     if (options.type == "missile") {
-      rollParts.push(
-        data.scores.dex.mod.toString(),
-        data.thac0.mod.missile.toString()
-      );
+      if (this.data.type === "character") {
+        rollParts.push(this.data.data.scores.dex.mod.toString());
+      }
+      rollParts.push(data.thac0.mod.missile.toString());
     } else if (options.type == "melee") {
-      rollParts.push(
-        data.scores.str.mod.toString(),
-        data.thac0.mod.melee.toString()
-      );
+      if (this.data.type === "character") {
+        rollParts.push(this.data.data.scores.str.mod.toString());
+      }
+      rollParts.push(data.thac0.mod.melee.toString());
     }
     if (attData.item && attData.item.data.bonus) {
       rollParts.push(attData.item.data.bonus);
     }
     let thac0 = data.thac0.value;
-    if (options.type == "melee") {
-      dmgParts.push(data.scores.str.mod);
+    if (this.data.type === "character" && options.type == "melee") {
+      dmgParts.push(this.data.data.scores.str.mod);
     }
     const rollData = {
       actor: this.data,
@@ -558,7 +618,7 @@ export class OseActor extends Actor {
    * @returns
    */
   async applyDamage(amount = 0, multiplier = 1) {
-    amount = Math.floor(parseInt(amount) * multiplier);
+    amount = Math.floor(parseInt(amount.toString()) * multiplier);
     const hp = this.data.data.hp;
 
     // Remaining goes to health
@@ -573,7 +633,7 @@ export class OseActor extends Actor {
   /**
    *
    * TODO: Fix this param type to some sort of generic to support returning number or string;
-   * @param {Record<number, any>} table
+   * @param {Record<number, number | string>} table
    * @param {number} val
    * @returns {any}
    */
@@ -756,7 +816,6 @@ export class OseActor extends Actor {
 
     data.aac.naked = baseAac + data.scores.dex.mod;
     data.ac.naked = baseAc - data.scores.dex.mod;
-    const armors = this.data.items.filter((i) => i.type == "armor");
     this.data.items.forEach((a) => {
       if (a.data.type !== "armor") {
         return;
