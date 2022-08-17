@@ -1,12 +1,8 @@
 import { OseDice } from "../dice";
 import { OSE, Save } from "../config";
-import {
-  ItemDataSourceArmorData,
-  ItemDataSourceItemData,
-  ItemDataSourceWeaponData,
-} from "../../types/item-data";
 import { ItemDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/itemData";
 import { OseActor } from "../actor/entity";
+import { ChatMessageDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/chatMessageData";
 
 /**
  * Override and extend the basic :class:`Item` implementation
@@ -40,15 +36,20 @@ export class OseItem extends Item {
 
   prepareDerivedData() {
     this.data.data.autoTags = this.getAutoTagList();
+    // @ts-ignore Tag handling is a bit inconsistent, ignoring.
     this.data.data.manualTags = this.data.data.tags;
   }
 
   static chatListeners(html: JQuery) {
-    html.on("click", ".card-buttons button", (event) => this._onChatCardAction(event));
-    html.on("click", ".item-name", this._onChatCardToggleContent.bind(this));
+    html.on("click", ".card-buttons button", (event) =>
+      this._onChatCardAction(event)
+    );
+    html.on("click", ".item-name", (event) => {
+      this._onChatCardToggleContent(event);
+    });
   }
 
-  getChatData(htmlOptions) {
+  getChatData(htmlOptions?: Partial<TextEditor.EnrichOptions>) {
     const data = duplicate(this.data.data);
 
     // Rich text description
@@ -58,28 +59,35 @@ export class OseItem extends Item {
     const props = [];
 
     if (this.data.type == "weapon") {
+      // @ts-ignore Using duplicated data, doesn't have property types
       data.tags.forEach((t) => props.push(t.value));
     }
     if (this.data.type == "spell") {
+      // @ts-ignore Using duplicated data, doesn't have property types
       props.push(`${data.class} ${data.lvl}`, data.range, data.duration);
     }
-    if (data.hasOwnProperty("equipped")) {
+    if ("equipped" in data) {
       props.push(data.equipped ? "Equipped" : "Not Equipped");
     }
 
     // Filter properties and return
+    // @ts-ignore Using duplicated data, doesn't have property types
     data.properties = props.filter((p) => !!p);
     return data;
   }
 
-  rollWeapon(options = {}) {
-    let isNPC = this.actor.data.type != "character";
+  rollWeapon(options: { skipDialog?: boolean } = {}) {
+    if (this.data.type !== "weapon") {
+      return;
+    }
+
+    let isNPC = this.actor?.data.type !== "character";
     const targets = 5;
     const data = this.data.data;
     let type = isNPC ? "attack" : "melee";
     const rollData = {
       item: this.data,
-      actor: this.actor.data,
+      actor: this.actor?.data,
       roll: {
         save: this.data.data.save,
         target: null,
@@ -96,14 +104,14 @@ export class OseItem extends Item {
             icon: '<i class="fas fa-fist-raised"></i>',
             label: "Melee",
             callback: () => {
-              this.actor.targetAttack(rollData, "melee", options);
+              this.actor?.targetAttack(rollData, "melee", options);
             },
           },
           missile: {
             icon: '<i class="fas fa-bullseye"></i>',
             label: "Missile",
             callback: () => {
-              this.actor.targetAttack(rollData, "missile", options);
+              this.actor?.targetAttack(rollData, "missile", options);
             },
           },
         },
@@ -113,11 +121,14 @@ export class OseItem extends Item {
     } else if (data.missile && !isNPC) {
       type = "missile";
     }
-    this.actor.targetAttack(rollData, type, options);
+    this.actor?.targetAttack(rollData, type, options);
     return true;
   }
 
-  async rollFormula(options = {}) {
+  async rollFormula(options: { event?: JQuery.Event } = {}) {
+    if (this.data.type !== "ability") {
+      return;
+    }
     const data = this.data.data;
     if (!data.roll) {
       throw new Error("This Item does not have a formula to roll!");
@@ -129,7 +140,7 @@ export class OseItem extends Item {
     let type = data.rollType;
 
     const newData = {
-      actor: this.actor.data,
+      actor: this.actor?.data,
       item: this.data,
       roll: {
         type: type,
@@ -144,6 +155,7 @@ export class OseItem extends Item {
       parts: rollParts,
       data: newData,
       skipDialog: true,
+      // @ts-ignore actor should be OseActor, use this.actor?
       speaker: ChatMessage.getSpeaker({ actor: this }),
       flavor: game.i18n.format("OSE.roll.formula", { label: label }),
       title: game.i18n.format("OSE.roll.formula", { label: label }),
@@ -151,18 +163,24 @@ export class OseItem extends Item {
   }
 
   spendSpell() {
+    if (this.data.type !== "spell") {
+      return;
+    }
     this.update({
       data: {
         cast: this.data.data.cast - 1,
       },
     }).then(() => {
-      this.show({ skipDialog: true });
+      this.show();
     });
   }
 
-  _getRollTag(data) {
+  // @ts-ignore parameter defined in getAutoTagList. It's a cloned and manipulated item source data.
+  _getRollTag(data: any) {
+    // @ts-ignore manipulation of data
     if (data.roll) {
       const roll = `${data.roll}${
+        // @ts-ignore manipulation of data
         data.rollTarget ? CONFIG.OSE.roll_type[data.rollType] : ""
       }${data.rollTarget ? data.rollTarget : ""}`;
       return {
@@ -173,9 +191,11 @@ export class OseItem extends Item {
     }
   }
 
-  _getSaveTag(data) {
+  // @ts-ignore parameter defined in getAutoTagList. It's a cloned and manipulated item source data.
+  _getSaveTag(data: any) {
     if (data.save) {
       return {
+        //@ts-ignore uknown parameter
         label: CONFIG.OSE.saves_long[data.save],
         icon: "fa-skull",
       };
@@ -207,17 +227,20 @@ export class OseItem extends Item {
         });
         break;
       case "armor":
-        tagList.push({ label: CONFIG.OSE.armor[data.type], icon: "fa-tshirt" });
+        tagList.push({
+          label: CONFIG.OSE.armor[this.data.data.type],
+          icon: "fa-tshirt",
+        });
         break;
       case "spell":
         tagList.push(
-          { label: data.class },
-          { label: data.range },
-          { label: data.duration }
+          { label: this.data.data.class },
+          { label: this.data.data.range },
+          { label: this.data.data.duration }
         );
         break;
       case "ability":
-        const reqs = data.requirements.split(",");
+        const reqs = this.data.data.requirements.split(",");
         reqs.forEach((req) => tagList.push({ label: req }));
         break;
     }
@@ -232,23 +255,21 @@ export class OseItem extends Item {
       tagList.push(saveTag);
     }
 
+    // @ts-ignore getAutoTagList is used to create autoTags in prepareDerivedData but also used in renderList#RenderItemDirectory. The types are inconsistent
     return tagList;
   }
 
   pushManualTag(values: string[]) {
-    if ("tags" in this.data.data) {
-      return;
-    }
     const data = this.data.data;
-    let update: typeof data.tags = [];
+    let update = [];
+    // @ts-ignore
     if (data.tags) {
+      // @ts-ignore
       update = duplicate(data.tags);
     }
     // FIXME: This data could be any of item type but should really only be weapon, armor, item... Issues being the "autofilling" of checkboxes for weapon data.
     // Current implementation results in "polluting" armor and items with the melee, slow, and missile booleans
-    let newData: Partial<ItemDataConstructorData> = {};
-
-    // support different titles and values. eg format: "tag(Tag Title)"
+    let newData: Partial<ItemDataConstructorData["data"]> = {};
     var regExp = /\(([^)]+)\)/;
     if (update) {
       values.forEach((val) => {
@@ -265,32 +286,35 @@ export class OseItem extends Item {
         // Auto fill checkboxes
         switch (val) {
           case CONFIG.OSE.tags.melee:
-            // @ts-ignore could be melee, item, or amor item type
+            // @ts-ignore could be melee, item, or amor item type, pollutes non weapons if the Melee tag is added
             newData.melee = true;
             break;
           case CONFIG.OSE.tags.slow:
-            // @ts-ignore could be melee, item, or amor item type
+            // @ts-ignore could be melee, item, or amor item type, pollutes non weapons if the Slow tag is added
             newData.slow = true;
             break;
           case CONFIG.OSE.tags.missile:
-            // @ts-ignore could be melee, item, or amor item type
+            // @ts-ignore could be melee, item, or amor item type, pollutes non weapons if the Missile tag is added
             newData.missile = true;
             break;
         }
-        update.push({ title, value: val });
+        update.push({ title: title, value: val });
       });
     } else {
       //@ts-ignore This will never run? update is at least an array.
       update = values;
     }
+    // @ts-ignore
     newData.tags = update;
-    return this.update({ data: { aac: { value: 1 } } });
+    return this.update({ data: newData });
   }
 
-  popManualTag(value) {
+  popManualTag(value: string) {
+    // @ts-ignore. Not all Items have tags
     const tags = this.data.data.tags;
     if (!tags) return;
 
+    // @ts-ignore, needs a proper tags type.
     let update = tags.filter((el) => el.value != value);
     let newData = {
       tags: update,
@@ -299,12 +323,12 @@ export class OseItem extends Item {
   }
 
   roll(options = {}) {
-    switch (this.type) {
+    switch (this.data.type) {
       case "weapon":
         this.rollWeapon(options);
         break;
       case "spell":
-        this.spendSpell(options);
+        this.spendSpell();
         break;
       case "ability":
         if (this.data.data.roll) {
@@ -325,19 +349,24 @@ export class OseItem extends Item {
    */
   async show() {
     // Basic template rendering data
-    const token = this.actor.token;
+    const token = this.actor?.token;
     const templateData = {
       actor: this.actor,
-      tokenId: token ? `${token.parent.id}.${token.id}` : null,
+      tokenId: token ? `${token?.parent?.id}.${token.id}` : null,
       item: foundry.utils.duplicate(this.data),
       data: this.getChatData(),
+      // @ts-ignore this property doesn't exist
       labels: this.labels,
+      // @ts-ignore this property doesn't exist
       isHealing: this.isHealing,
+      // @ts-ignore this property doesn't exist
       hasDamage: this.hasDamage,
       isSpell: this.data.type === "spell",
+      // @ts-ignore this property doesn't exist
       hasSave: this.hasSave,
       config: CONFIG.OSE,
     };
+    // @ts-ignore need proper types
     templateData.data.properties = this.getAutoTagList();
 
     // Render the chat card template
@@ -345,14 +374,15 @@ export class OseItem extends Item {
     const html = await renderTemplate(template, templateData);
 
     // Basic chat message data
-    const chatData = {
-      user: game.user.id,
+    const chatData: ChatMessageDataConstructorData = {
+      user: game.user?.id,
       type: CONST.CHAT_MESSAGE_TYPES.OTHER,
       content: html,
       speaker: {
-        actor: this.actor.id,
-        token: this.actor.token,
-        alias: this.actor.name,
+        actor: this.actor?.id,
+        // @ts-ignore token should be token._id
+        token: this.actor?.token,
+        alias: this.actor?.name,
       },
     };
 
@@ -360,7 +390,8 @@ export class OseItem extends Item {
     let rollMode = game.settings.get("core", "rollMode");
     if (["gmroll", "blindroll"].includes(rollMode))
       chatData["whisper"] = ChatMessage.getWhisperRecipients("GM");
-    if (rollMode === "selfroll") chatData["whisper"] = [game.user.id];
+    if (rollMode === "selfroll")
+      chatData["whisper"] = game.user?.id ? [game.user.id] : [];
     if (rollMode === "blindroll") chatData["blind"] = true;
 
     // Create the chat message
@@ -372,7 +403,7 @@ export class OseItem extends Item {
    * @param {Event} event   The originating click event
    * @private
    */
-  static _onChatCardToggleContent(event) {
+  static _onChatCardToggleContent(event: JQuery.ClickEvent) {
     event.preventDefault();
     const header = event.currentTarget;
     const card = header.closest(".chat-card");
@@ -391,7 +422,8 @@ export class OseItem extends Item {
     const button = event.currentTarget as HTMLButtonElement;
     button.disabled = true;
     const card = button.closest<HTMLElement>(".chat-card")!;
-    const messageId = card!.closest<HTMLElement>(".message")!.dataset.messageId!;
+    const messageId =
+      card!.closest<HTMLElement>(".message")!.dataset.messageId!;
     const message = game.messages?.get(messageId);
     const action = button.dataset.action;
 
@@ -417,7 +449,7 @@ export class OseItem extends Item {
     // Get card targets
     let targets: OseActor[] = [];
     if (isTargetted) {
-      targets = this._getChatCardTargets(card);
+      targets = this._getChatCardTargets();
     }
 
     // Attack and Damage Rolls
@@ -449,7 +481,10 @@ export class OseItem extends Item {
       const [sceneId, tokenId] = tokenKey.split(".");
       const scene = game.scenes!.get(sceneId);
       if (!scene) return null;
-      const tokenData = scene.getEmbeddedDocument("Token", tokenId) as TokenDocument;
+      const tokenData = scene.getEmbeddedDocument(
+        "Token",
+        tokenId
+      ) as TokenDocument;
       if (!tokenData) return null;
       const token = new Token(tokenData);
       return token.actor;
@@ -460,7 +495,7 @@ export class OseItem extends Item {
     return game.actors!.get(actorId!) || null;
   }
 
-  static _getChatCardTargets(card: never): OseActor[] {
+  static _getChatCardTargets(): OseActor[] {
     const character = game.user!.character;
     const controlled = canvas.tokens!.controlled;
     const targets = controlled.reduce<OseActor[]>(
