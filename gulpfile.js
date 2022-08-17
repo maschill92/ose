@@ -99,7 +99,7 @@ const build = gulp.series(
  * Remove built files from `dist` folder while ignoring source files
  */
 async function clean() {
-  const files = [...staticFiles, "module"];
+  const files = [...staticFiles, "module", `${name}.css`];
 
   if (fs.existsSync(`${stylesDirectory}/${name}.${stylesExtension}`)) {
     files.push("styles");
