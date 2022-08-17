@@ -1,21 +1,19 @@
-import { OSE } from "../config";
+import { ActorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/module.mjs";
+import { OSE, OseConfig } from "../config";
+
+interface OseItemSheetOptions extends ItemSheet.Options {}
+type OseItemSheetData = ActorData & { editable: boolean; config: OseConfig };
+
 
 /**
  * Extend the basic ItemSheet with some very simple modifications
  */
-export class OseItemSheet extends ItemSheet {
-  constructor(...args) {
-    super(...args);
-
-    /**
-     * Keep track of the currently active sheet tab
-     * @type {string}
-     */
-  }
-
+export class OseItemSheet extends ItemSheet<
+  OseItemSheetOptions,
+  OseItemSheetData
+> {
   /**
    * Extend and override the default options used by the Simple Item Sheet
-   * @returns {Object}
    */
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
@@ -45,10 +43,13 @@ export class OseItemSheet extends ItemSheet {
    * Prepare data for rendering the Item sheet
    * The prepared data object contains both the actor data as well as additional sheet options
    */
-  getData() {
-    const data = super.getData().data;
-    data.editable = this.document.sheet.isEditable;
+  async getData(): Promise<OseItemSheetData> {
+    const data = (await super.getData()).data;
+    //@ts-ignore
+    data.editable = this.document.sheet?.isEditable ?? false;
+    //@ts-ignore
     data.config = CONFIG.OSE;
+    //@ts-ignore
     return data;
   }
 
@@ -58,24 +59,30 @@ export class OseItemSheet extends ItemSheet {
    * Activate event listeners using the prepared sheet HTML
    * @param html {HTML}   The prepared HTML object ready to be rendered into the DOM
    */
-  activateListeners(html) {
+  activateListeners(html: JQuery) {
     html.find('input[data-action="add-tag"]').keypress((ev) => {
       if (ev.which == 13) {
         let value = $(ev.currentTarget).val();
-        let values = value.split(",");
+        let values = (value as string).split(",");
         this.object.pushManualTag(values);
       }
     });
     html.find(".tag-delete").click((ev) => {
-      let value = ev.currentTarget.parentElement.dataset.tag;
+      let value = ev.currentTarget!.parentElement!.dataset.tag;
       this.object.popManualTag(value);
     });
     html.find("a.melee-toggle").click(() => {
-      this.object.update({ data: { melee: !this.object.data.data.melee } });
+      if (this.object.data.type === "weapon") {
+        this.object.update({ data: { melee: !this.object.data.data.melee } });
+      }
     });
 
     html.find("a.missile-toggle").click(() => {
-      this.object.update({ data: { missile: !this.object.data.data.missile } });
+      if (this.object.data.type === "weapon") {
+        this.object.update({
+          data: { missile: !this.object.data.data.missile },
+        });
+      }
     });
 
     super.activateListeners(html);
