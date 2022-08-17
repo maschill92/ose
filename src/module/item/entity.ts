@@ -1,5 +1,12 @@
 import { OseDice } from "../dice";
-import { OSE } from "../config";
+import { OSE, Save } from "../config";
+import {
+  ItemDataSourceArmorData,
+  ItemDataSourceItemData,
+  ItemDataSourceWeaponData,
+} from "../../types/item-data";
+import { ItemDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/itemData";
+import { OseActor } from "../actor/entity";
 
 /**
  * Override and extend the basic :class:`Item` implementation
@@ -17,7 +24,10 @@ export class OseItem extends Item {
     };
   }
 
-  static async create(data, context = {}) {
+  static override async create(
+    data: ItemDataConstructorData,
+    context: DocumentModificationContext
+  ) {
     if (data.img === undefined) {
       data.img = this.defaultIcons[data.type];
     }
@@ -33,8 +43,8 @@ export class OseItem extends Item {
     this.data.data.manualTags = this.data.data.tags;
   }
 
-  static chatListeners(html) {
-    html.on("click", ".card-buttons button", this._onChatCardAction.bind(this));
+  static chatListeners(html: JQuery) {
+    html.on("click", ".card-buttons button", (event) => this._onChatCardAction(event));
     html.on("click", ".item-name", this._onChatCardToggleContent.bind(this));
   }
 
@@ -174,7 +184,7 @@ export class OseItem extends Item {
     }
   }
 
-  getAutoTagList() {
+  getAutoTagList(): Item["data"]["data"]["autoTags"] {
     const tagList = [];
     const data = this.data.data;
 
@@ -183,16 +193,16 @@ export class OseItem extends Item {
       case "item":
         break;
       case "weapon":
-        tagList.push({ label: data.damage, icon: "fa-tint" });
-        if (data.missile) {
+        tagList.push({ label: this.data.data.damage, icon: "fa-tint" });
+        if (this.data.data.missile) {
           tagList.push({
-            label: `${data.range.short}/${data.range.medium}/${data.range.long}`,
+            label: `${this.data.data.range.short}/${this.data.data.range.medium}/${this.data.data.range.long}`,
             icon: "fa-bullseye",
           });
         }
 
         // Push manual tags
-        data.tags.forEach((t) => {
+        this.data.data.tags.forEach((t) => {
           tagList.push({ label: t.value });
         });
         break;
@@ -225,13 +235,20 @@ export class OseItem extends Item {
     return tagList;
   }
 
-  pushManualTag(values) {
+  pushManualTag(values: string[]) {
+    if ("tags" in this.data.data) {
+      return;
+    }
     const data = this.data.data;
-    let update = [];
+    let update: typeof data.tags = [];
     if (data.tags) {
       update = duplicate(data.tags);
     }
-    let newData = {};
+    // FIXME: This data could be any of item type but should really only be weapon, armor, item... Issues being the "autofilling" of checkboxes for weapon data.
+    // Current implementation results in "polluting" armor and items with the melee, slow, and missile booleans
+    let newData: Partial<ItemDataConstructorData> = {};
+
+    // support different titles and values. eg format: "tag(Tag Title)"
     var regExp = /\(([^)]+)\)/;
     if (update) {
       values.forEach((val) => {
@@ -248,22 +265,26 @@ export class OseItem extends Item {
         // Auto fill checkboxes
         switch (val) {
           case CONFIG.OSE.tags.melee:
+            // @ts-ignore could be melee, item, or amor item type
             newData.melee = true;
             break;
           case CONFIG.OSE.tags.slow:
+            // @ts-ignore could be melee, item, or amor item type
             newData.slow = true;
             break;
           case CONFIG.OSE.tags.missile:
+            // @ts-ignore could be melee, item, or amor item type
             newData.missile = true;
             break;
         }
-        update.push({ title: title, value: val });
+        update.push({ title, value: val });
       });
     } else {
+      //@ts-ignore This will never run? update is at least an array.
       update = values;
     }
     newData.tags = update;
-    return this.update({ data: newData });
+    return this.update({ data: { aac: { value: 1 } } });
   }
 
   popManualTag(value) {
@@ -363,27 +384,27 @@ export class OseItem extends Item {
     }
   }
 
-  static async _onChatCardAction(event) {
+  static async _onChatCardAction(event: JQuery.ClickEvent) {
     event.preventDefault();
 
     // Extract card data
-    const button = event.currentTarget;
+    const button = event.currentTarget as HTMLButtonElement;
     button.disabled = true;
-    const card = button.closest(".chat-card");
-    const messageId = card.closest(".message").dataset.messageId;
-    const message = game.messages.get(messageId);
+    const card = button.closest<HTMLElement>(".chat-card")!;
+    const messageId = card!.closest<HTMLElement>(".message")!.dataset.messageId!;
+    const message = game.messages?.get(messageId);
     const action = button.dataset.action;
 
     // Validate permission to proceed with the roll
     const isTargetted = action === "save";
-    if (!(isTargetted || game.user.isGM || message.isAuthor)) return;
+    if (!(isTargetted || game.user!.isGM || message!.isAuthor)) return;
 
     // Get the Actor from a synthetic Token
     const actor = this._getChatCardActor(card);
     if (!actor) return;
 
     // Get the Item
-    const item = actor.items.get(card.dataset.itemId);
+    const item = actor.items.get(card.dataset.itemId as string);
     if (!item) {
       return ui.notifications.error(
         game.i18n.format("OSE.error.itemNoLongerExistsOnActor", {
@@ -394,12 +415,14 @@ export class OseItem extends Item {
     }
 
     // Get card targets
-    let targets = [];
+    let targets: OseActor[] = [];
     if (isTargetted) {
       targets = this._getChatCardTargets(card);
     }
 
     // Attack and Damage Rolls
+    debugger;
+    //@ts-ignore item doesn't have a rollDamage function.
     if (action === "damage") await item.rollDamage({ event });
     else if (action === "formula") await item.rollFormula({ event });
     // Saving Throws for card targets
@@ -411,7 +434,7 @@ export class OseItem extends Item {
         return (button.disabled = false);
       }
       for (let t of targets) {
-        await t.rollSave(button.dataset.save, { event });
+        await t.rollSave(button.dataset.save as Save, { event });
       }
     }
 
@@ -419,14 +442,14 @@ export class OseItem extends Item {
     button.disabled = false;
   }
 
-  static _getChatCardActor(card) {
+  static _getChatCardActor(card: HTMLElement): OseActor | null {
     // Case 1 - a synthetic actor from a Token
     const tokenKey = card.dataset.tokenId;
     if (tokenKey) {
       const [sceneId, tokenId] = tokenKey.split(".");
-      const scene = game.scenes.get(sceneId);
+      const scene = game.scenes!.get(sceneId);
       if (!scene) return null;
-      const tokenData = scene.getEmbeddedDocument("Token", tokenId);
+      const tokenData = scene.getEmbeddedDocument("Token", tokenId) as TokenDocument;
       if (!tokenData) return null;
       const token = new Token(tokenData);
       return token.actor;
@@ -434,14 +457,14 @@ export class OseItem extends Item {
 
     // Case 2 - use Actor ID directory
     const actorId = card.dataset.actorId;
-    return game.actors.get(actorId) || null;
+    return game.actors!.get(actorId!) || null;
   }
 
-  static _getChatCardTargets(card) {
-    const character = game.user.character;
-    const controlled = canvas.tokens.controlled;
-    const targets = controlled.reduce(
-      (arr, t) => (t.actor ? arr.concat([t.actor]) : arr),
+  static _getChatCardTargets(card: never): OseActor[] {
+    const character = game.user!.character;
+    const controlled = canvas.tokens!.controlled;
+    const targets = controlled.reduce<OseActor[]>(
+      (arr, t) => (t.actor ? arr.concat([t.actor!]) : arr),
       []
     );
     if (character && controlled.length === 0) targets.push(character);

@@ -1,5 +1,7 @@
 import { ArmorType, PatternColor, RollType, Save } from "../module/config";
 
+type Tags = {title: string; value: string;}[]
+
 /**
  * template.json interface backed by "common" Item template
  */
@@ -7,9 +9,9 @@ interface ItemDataSourceTemplateCommon {
   description: string;
   autoTags: { label: string; icon: string }[];
   /**
-   * Does this get used? push/popManualTag functions use this.data.data.tags...
+   * Does this get used? push/popManualTag functions use this.data.data.tags... Also it's defined in "derived data"
    */
-  manualTags: never[];
+  manualTags: Tags;
 }
 
 /**
@@ -47,6 +49,8 @@ interface ItemDataSourceItemData
     ItemDataSourceTemplatePhysical {
   treasure: boolean;
   isContainer: boolean;
+  //FIXME: This is used in item-sheet.html and item/entity.ts but isn't defined in template.json
+  tags: Tags;
 }
 interface ItemDataSourceItem {
   type: "item";
@@ -82,7 +86,7 @@ interface ItemDataSourceWeaponData
   pattern: string;
   damage: string;
   bonus: number;
-  tags: string[];
+  tags: Tags;
   slow: boolean;
   missile: boolean;
   melee: boolean;
@@ -107,6 +111,8 @@ interface ItemDataSourceArmorData
   ac: { value: number };
   aac: { value: number };
   type: ArmorType;
+  //FIXME: This is used in armor-sheet.html and item/entity.ts but isn't defined in template.json
+  tags: Tags;
 }
 interface ItemDataSourceArmor {
   type: "armor";

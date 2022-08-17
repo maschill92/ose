@@ -1,5 +1,5 @@
 interface RollOptions {
-  event?: MouseEvent;
+  event?: JQuery.ClickEvent;
   fastForward?: boolean;
   chatMessage?: string;
 }
