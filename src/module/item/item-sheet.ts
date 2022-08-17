@@ -4,7 +4,6 @@ import { OSE, OseConfig } from "../config";
 interface OseItemSheetOptions extends ItemSheet.Options {}
 type OseItemSheetData = ActorData & { editable: boolean; config: OseConfig };
 
-
 /**
  * Extend the basic ItemSheet with some very simple modifications
  */
@@ -68,8 +67,10 @@ export class OseItemSheet extends ItemSheet<
       }
     });
     html.find(".tag-delete").click((ev) => {
-      let value = ev.currentTarget!.parentElement!.dataset.tag;
-      this.object.popManualTag(value);
+      let value = ev.currentTarget.parentElement?.dataset.tag;
+      if (value) {
+        this.object.popManualTag(value);
+      }
     });
     html.find("a.melee-toggle").click(() => {
       if (this.object.data.type === "weapon") {
