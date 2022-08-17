@@ -1,4 +1,3 @@
-// @ts-check
 /* -------------------------------------------- */
 /*  Hotbar Macros                               */
 /* -------------------------------------------- */
@@ -6,12 +5,11 @@
 /**
  * Create a Macro from an Item drop.
  * Get an existing item macro if one exists, otherwise create a new one.
- * @param {*} data     The dropped data, not good typing right now... see: https://github.com/League-of-Foundry-Developers/foundry-vtt-types/issues/928
- * @param {number} slot     The hotbar slot to use
- * @returns {void | false | Promise<void>} foundry expects "false" to prevent calling additional hooks. This should probably be made boolean
+ * @param data The dropped data, not good typing right now... see: https://github.com/League-of-Foundry-Developers/foundry-vtt-types/issues/928
+ * @param slot The hotbar slot to use
+ * @returns FIXME: foundry expects "false" to prevent calling additional hooks. This should probably be made boolean
  */
-export function createOseMacro(data, slot) {
-  debugger;
+export function createOseMacro(data: any, slot: number): void | false | Promise<void> {
   if ("type" in data && data.type !== "Item") return;
   if (!("data" in data))
     ui.notifications.warn(
@@ -45,10 +43,10 @@ export function createOseMacro(data, slot) {
 /**
  * Create a Macro from an Item drop.
  * Get an existing item macro if one exists, otherwise create a new one.
- * @param {string} itemName
- * @return {Promise<void>}
+ * @param itemName
+ * @return FIXME: foundry expects "false" to prevent calling additional hooks. This should probably be made boolean
  */
-export async function rollItemMacro(itemName) {
+export async function rollItemMacro(itemName: string): Promise<void> {
   const speaker = ChatMessage.getSpeaker();
   let actor;
   if (speaker.token) actor = game.actors?.tokens[speaker.token];
