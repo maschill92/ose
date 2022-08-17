@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-unused-vars
-
+// @ts-nocheck
 import { OSE } from "../config";
 
 export class OseCharacterGpCost extends FormApplication {
