@@ -6,7 +6,7 @@ module.exports = () =>
   defineConfig({
     input: "src/ose.js",
     output: {
-      dir: "dist/",
+      dir: "dist/module/",
       format: "es",
       sourcemap: true,
     },

@@ -9,9 +9,9 @@
     "moduleResolution": "Node",
     "strict": true,
     "outDir": "dist/module",
-    // let rollup handle source maps for now. Ignore console warnings.
-    // FIXME: source maps are of the generated JS, not the original typescript
-    "sourceMap": false,
+    "sourceMap": true,
+    // inline sources so that the original typescript is included in sourcemaps
+    "inlineSources": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
