@@ -324,6 +324,7 @@ export class OseCombat {
   ) => {
     data = data || {};
     let token = canvas.tokens?.get(data.tokenId as string);
+    // @ts-ignore "black" isn't a valid color as defined in config.
     let color: PatternColor = "black";
     // @ts-ignore
     switch (token.data.disposition) {

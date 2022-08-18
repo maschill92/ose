@@ -25,7 +25,6 @@ export type RollType = "result" | "above" | "below";
 export type Save = "death" | "wand" | "paralysis" | "breath" | "spell";
 export type ArmorType = "unarmored" | "light" | "heavy" | "shield";
 export type PatternColor =
-  | "black"
   | "green"
   | "red"
   | "yellow"
