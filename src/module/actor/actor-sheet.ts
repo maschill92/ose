@@ -1,17 +1,29 @@
-// @ts-nocheck
 import { OseEntityTweaks } from "../dialog/entity-tweaks";
 import { OSE } from "../config";
+import { ConfiguredDocumentClass } from "@league-of-foundry-developers/foundry-vtt-types/src/types/helperTypes";
+import { OseItem } from "../item/entity";
+import {
+  ActiveEffectData,
+  ItemData,
+} from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs";
+import {
+  ItemDataConstructorData,
+  ItemDataSource,
+} from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/itemData";
 
-export class OseActorSheet extends ActorSheet {
-  constructor(...args) {
-    super(...args);
-  }
-  /* -------------------------------------------- */
+interface OseActorSheetOptions extends ActorSheet.Options {}
+interface OseActorSheetData
+  extends InstanceType<ConfiguredDocumentClass<typeof Actor>> {}
 
+export class OseActorSheet<
+  Options extends OseActorSheetOptions = OseActorSheetOptions,
+  Data extends object = OseActorSheetData
+> extends ActorSheet<Options, Data> {
   getData() {
+    // @ts-ignore
     const data = foundry.utils.deepClone(super.getData().data);
     data.owner = this.actor.isOwner;
-    data.editable = this.actor.sheet.isEditable;
+    data.editable = this.actor?.sheet?.isEditable;
 
     data.config = {
       ...CONFIG.OSE,
@@ -24,7 +36,11 @@ export class OseActorSheet extends ActorSheet {
     return data;
   }
 
-  activateEditor(name, options, initialContent) {
+  activateEditor(
+    name: string,
+    options: TextEditor.Options,
+    initialContent?: string
+  ) {
     // remove some controls to the editor as the space is lacking
     if (name == "data.details.description") {
       options.toolbar = "styleselect bullist hr table removeFormat save";
@@ -34,16 +50,20 @@ export class OseActorSheet extends ActorSheet {
 
   // Helpers
 
-  _getItemFromActor(event) {
-    const li = event.currentTarget.closest(".item-entry");
-    const item = this.actor.items.get(li.dataset.itemId);
-
+  _getItemFromActor(
+    event: JQuery.TriggeredEvent<HTMLElement, null, HTMLElement>
+  ): OseItem {
+    const li = event.currentTarget.closest<HTMLElement>(".item-entry");
+    const item = this.actor.items.get(li?.dataset.itemId ?? "");
+    if (!item) {
+      throw new Error("Unable to find item.");
+    }
     return item;
   }
 
   // end Helpers
 
-  _toggleItemCategory(event) {
+  _toggleItemCategory(event: JQuery.TriggeredEvent) {
     event.preventDefault();
     const targetCategory = $(event.currentTarget);
     let items = targetCategory.next(".item-list");
@@ -63,7 +83,7 @@ export class OseActorSheet extends ActorSheet {
     }
   }
 
-  _toggleContainedItems(event) {
+  _toggleContainedItems(event: JQuery.TriggeredEvent) {
     event.preventDefault();
     const targetItems = $(event.target.closest(".container"));
     let items = targetItems.find(".item-list.contained-items");
@@ -83,7 +103,7 @@ export class OseActorSheet extends ActorSheet {
     }
   }
 
-  _toggleItemSummary(event) {
+  _toggleItemSummary(event: JQuery.TriggeredEvent) {
     event.preventDefault();
     const summary = $(event.currentTarget)
       .closest(".item-header")
@@ -96,19 +116,19 @@ export class OseActorSheet extends ActorSheet {
     }
   }
 
-  async _displayItemInChat(event) {
+  async _displayItemInChat(event: JQuery.TriggeredEvent) {
     const li = $(event.currentTarget).closest(".item-entry");
     const item = this.actor.items.get(li.data("itemId"));
-    item.show();
+    item?.show();
   }
 
-  async _removeItemFromActor(event) {
+  async _removeItemFromActor(event: JQuery.TriggeredEvent) {
     const item = this._getItemFromActor(event);
     const itemDisplay = event.currentTarget.closest(".item-entry");
 
-    if (item.type === "container" && item.data.data.itemIds) {
+    if (item.data.type === "container" && item.data.data.itemIds) {
       const containedItems = item.data.data.itemIds;
-      const updateData = containedItems.reduce((acc, val) => {
+      const updateData = containedItems.reduce<any[]>((acc, val) => {
         acc.push({ _id: val.id, "data.containerId": "" });
         return acc;
       }, []);
@@ -121,17 +141,19 @@ export class OseActorSheet extends ActorSheet {
   /**
    * @param {bool} decrement
    */
-  _useConsumable(event, decrement) {
+  _useConsumable(event: JQuery.TriggeredEvent, decrement: boolean) {
     const item = this._getItemFromActor(event);
 
     if (decrement) {
+      // @ts-ignore should consider only physical item types?
       item.update({ "data.quantity.value": item.data.data.quantity.value - 1 });
     } else {
+      // @ts-ignore should consider only physical item types?
       item.update({ "data.quantity.value": item.data.data.quantity.value + 1 });
     }
   }
 
-  async _onSpellChange(event) {
+  async _onSpellChange(event: JQuery.TriggeredEvent) {
     event.preventDefault();
     const item = this._getItemFromActor(event);
     if (event.target.dataset.field == "cast") {
@@ -143,23 +165,24 @@ export class OseActorSheet extends ActorSheet {
     }
   }
 
-  async _resetSpells(event) {
+  async _resetSpells(event: JQuery.TriggeredEvent) {
     let spells = $(event.currentTarget)
       .closest(".inventory.spells")
       .find(".item-entry");
     spells.each((_, el) => {
-      let itemId = el.dataset.itemId;
+      let itemId = el.dataset.itemId as string;
       const item = this.actor.items.get(itemId);
-      item.update({
+      item?.update({
         _id: item.id,
+        // @ts-ignore should verify that item is a spell
         "data.cast": item.data.data.memorized,
       });
     });
   }
 
-  async _rollAbility(event) {
+  async _rollAbility(event: JQuery.ClickEvent) {
     const item = this._getItemFromActor(event);
-    if (item.type == "weapon") {
+    if (item.data.type == "weapon") {
       if (this.actor.data.type === "monster") {
         item.update({
           data: { counter: { value: item.data.data.counter.value - 1 } },
@@ -167,24 +190,26 @@ export class OseActorSheet extends ActorSheet {
       }
       item.rollWeapon({ skipDialog: event.ctrlKey || event.metaKey });
     } else if (item.type == "spell") {
-      item.spendSpell({ skipDialog: event.ctrlKey || event.metaKey });
+      // @ts-ignore sendSpell doesn't take any parameters
+      item.spendSpell({ skipDialog: !!event.ctrlKey || !!event.metaKey });
     } else {
       item.rollFormula({ skipDialog: event.ctrlKey || event.metaKey });
     }
   }
 
-  async _rollSave(event) {
+  async _rollSave(event: JQuery.TriggeredEvent) {
     let actorObject = this.actor;
     let element = event.currentTarget;
     let save = element.parentElement.parentElement.dataset.save;
     actorObject.rollSave(save, { event: event });
   }
 
-  async _rollAttack(event) {
+  async _rollAttack(event: JQuery.TriggeredEvent) {
     let actorObject = this.actor;
     let element = event.currentTarget;
     let attack = element.parentElement.parentElement.dataset.attack;
     const rollData = {
+      // @ts-ignore not sure where this comes from, perhaps subclasses?
       actor: this.data,
       roll: {},
     };
@@ -194,13 +219,16 @@ export class OseActorSheet extends ActorSheet {
     });
   }
 
-  _onSortItem(event, itemData) {
-    const source = this.actor.items.get(itemData._id);
+  _onSortItem(event: DragEvent, itemData: foundry.data.ItemData["_source"]) {
+    debugger;
+    const source = this.actor.items.get(itemData._id!)!;
     const siblings = this.actor.items.filter((i) => {
-      return i.data._id !== source.data._id;
+      return i.data._id !== source?.data._id;
     });
-    const dropTarget = event.target.closest("[data-item-id]");
-    const targetId = dropTarget ? dropTarget.dataset.itemId : null;
+    const dropTarget = (event.target as HTMLElement).closest<HTMLElement>(
+      "[data-item-id]"
+    );
+    const targetId = dropTarget ? dropTarget.dataset?.itemId : null;
     const target = siblings.find((s) => s.data._id === targetId);
 
     // Dragging items into a container
@@ -213,31 +241,40 @@ export class OseActorSheet extends ActorSheet {
       ]);
       return;
     }
+    // @ts-ignore should check type here?
     if (source?.data.containerId !== "") {
       this.actor.updateEmbeddedDocuments("Item", [
         { _id: source.id, "data.containerId": "" },
       ]);
     }
 
-    super._onSortItem(event, itemData);
+    return super._onSortItem(event, itemData);
   }
 
-  _onDragStart(event) {
-    const li = event.currentTarget;
-    let itemIdsArray = [];
-    if (event.target.classList.contains("content-link")) return;
+  _onDragStart(event: DragEvent) {
+    const li = event.currentTarget as HTMLElement;
+    let itemIdsArray: OseItem[] = [];
+    if ((event.target as HTMLElement).classList.contains("content-link"))
+      return;
 
     // Create drag data
-    const dragData = {
+    const dragData: {
+      actorId: string | null;
+      sceneId: string | null;
+      tokenId: string | null;
+      pack: string | null;
+      type?: string;
+      data?: ItemData | ActiveEffectData;
+    } = {
       actorId: this.actor.id,
-      sceneId: this.actor.isToken ? canvas.scene?.id : null,
-      tokenId: this.actor.isToken ? this.actor.token.id : null,
+      sceneId: this.actor.isToken ? canvas.scene?.id ?? null : null,
+      tokenId: this.actor.isToken ? this.actor.token?.id ?? null : null,
       pack: this.actor.pack,
     };
 
     // Owned Items
     if (li.dataset.itemId) {
-      const item = this.actor.items.get(li.dataset.itemId);
+      const item = this.actor.items.get(li.dataset.itemId)!;
       dragData.type = "Item";
       dragData.data = item.data;
       if (item.data.type === "container" && item.data.data.itemIds.length) {
@@ -250,11 +287,11 @@ export class OseActorSheet extends ActorSheet {
     if (li.dataset.effectId) {
       const effect = this.actor.effects.get(li.dataset.effectId);
       dragData.type = "ActiveEffect";
-      dragData.data = effect.data;
+      dragData.data = effect?.data;
     }
 
     // Set data transfer
-    event.dataTransfer.setData(
+    event.dataTransfer?.setData(
       "text/plain",
       JSON.stringify(dragData, (key, value) => {
         if (key === "itemIds") {
@@ -267,18 +304,28 @@ export class OseActorSheet extends ActorSheet {
     );
   }
 
-  async _onDropItemCreate(itemData) {
+  // @ts-ignore need to fix the return type
+  async _onDropItemCreate(
+    ...[itemData]: Parameters<ActorSheet["_onDropItemCreate"]>
+  ) {
     //override to fix hidden items because their original containers don't exist on this actor
     itemData = itemData instanceof Array ? itemData : [itemData];
     itemData.forEach((item) => {
-      if (item.data.containerId && item.data.containerId !== "")
+      if (
+        "containerId" in item.data &&
+        item.data.containerId &&
+        item.data.containerId !== ""
+      )
+        // @ts-ignore type check here.
         item.data.containerId = "";
       if (item.type === "container" && typeof item.data.itemIds === "string") {
         //itemIds was double stringified to fix strange behavior with stringify blanking our Arrays
         const containedItems = JSON.parse(item.data.itemIds);
+        // @ts-ignore determine type for this
         containedItems.forEach((containedItem) => {
           containedItem.data.containerId = "";
         });
+        // @ts-ignore align containedItems type with itemData
         itemData.push(...containedItems);
       }
     });
@@ -287,7 +334,9 @@ export class OseActorSheet extends ActorSheet {
 
   /* -------------------------------------------- */
 
-  async _chooseItemType(choices = ["weapon", "armor", "shield", "gear"]) {
+  async _chooseItemType(
+    choices = ["weapon", "armor", "shield", "gear"]
+  ): Promise<{ type: ItemDataSource["type"]; name: string }> {
     let templateData = { types: choices },
       dlg = await renderTemplate(
         `${OSE.systemPath()}/templates/items/entity-create.html`,
@@ -303,9 +352,13 @@ export class OseActorSheet extends ActorSheet {
             label: game.i18n.localize("OSE.Ok"),
             icon: '<i class="fas fa-check"></i>',
             callback: (html) => {
+              debugger;
+              const $html = $(html);
               resolve({
-                type: html.find('select[name="type"]').val(),
-                name: html.find('input[name="name"]').val(),
+                type: $html
+                  .find('select[name="type"]')
+                  .val() as ItemDataSource["type"],
+                name: $html.find('input[name="name"]').val() as string,
               });
             },
           },
@@ -319,13 +372,16 @@ export class OseActorSheet extends ActorSheet {
     });
   }
 
-  _createItem(event) {
+  _createItem(event: JQuery.TriggeredEvent) {
     event.preventDefault();
     const header = event.currentTarget;
-    const type = header.dataset.type;
+    const type = header.dataset.type as ItemDataSource["type"] | "choice";
 
     // item creation helper func
-    const createItem = function (type, name) {
+    const createItem = function (
+      type: ItemDataSource["type"],
+      name?: string
+    ): DeepPartial<ItemDataConstructorData> {
       const itemData = {
         name: name ? name : `New ${type.capitalize()}`,
         type: type,
@@ -348,7 +404,7 @@ export class OseActorSheet extends ActorSheet {
     }
   }
 
-  async _updateItemQuantity(event) {
+  async _updateItemQuantity(event: JQuery.TriggeredEvent) {
     event.preventDefault();
     const item = this._getItemFromActor(event);
 
@@ -364,52 +420,59 @@ export class OseActorSheet extends ActorSheet {
   }
 
   // Override to set resizable initial size
-  async _renderInner(...args) {
-    const html = await super._renderInner(...args);
+  async _renderInner(data: Data): Promise<JQuery> {
+    const html = await super._renderInner(data);
     this.form = html[0];
 
     // Resize resizable classes
     let resizable = html.find(".resizable");
     if (resizable.length == 0) {
+      // @ts-ignore when does this break?
       return;
     }
     resizable.each((_, el) => {
+      // @ts-ignore check these types?
       let heightDelta = this.position.height - this.options.height;
-      el.style.height = `${heightDelta + parseInt(el.dataset.baseSize)}px`;
+      el.style.height = `${heightDelta + parseInt(el.dataset.baseSize!)}px`;
     });
     return html;
   }
 
-  async _onResize(event) {
+  async _onResize(event: Event) {
     super._onResize(event);
 
-    let html = $(this.form);
+    let html = $(this.form!);
     let resizable = html.find(".resizable");
     if (resizable.length == 0) {
       return;
     }
     // Resize divs
+    // FIXME: This logic appears to be the same as that in renderInner.
     resizable.each((_, el) => {
+      // @ts-ignore check these types? can this be handled via css/flex?
       let heightDelta = this.position.height - this.options.height;
-      el.style.height = `${heightDelta + parseInt(el.dataset.baseSize)}px`;
+      el.style.height = `${heightDelta + parseInt(el.dataset.baseSize!)}px`;
     });
     // Resize editors
     let editors = html.find(".editor");
     editors.each((id, editor) => {
-      let container = editor.closest(".resizable-editor");
+      let container = editor.closest<HTMLElement>(".resizable-editor");
       if (container) {
+        // @ts-ignore
         let heightDelta = this.position.height - this.options.height;
         editor.style.height = `${
-          heightDelta + parseInt(container.dataset.editorSize)
+          heightDelta + parseInt(container.dataset.editorSize!)
         }px`;
       }
     });
   }
 
-  _onConfigureActor(event) {
+  _onConfigureActor(event: JQuery.Event) {
     event.preventDefault();
     new OseEntityTweaks(this.actor, {
+      // @ts-ignore
       top: this.position.top + 40,
+      // @ts-ignore
       left: this.position.left + (this.position.width - 400) / 2,
     }).render(true);
   }
@@ -418,30 +481,28 @@ export class OseActorSheet extends ActorSheet {
    * Extend and override the sheet header buttons
    * @override
    */
-  _getHeaderButtons() {
+  _getHeaderButtons(): Application.HeaderButton[] {
     let buttons = super._getHeaderButtons();
 
     // Token Configuration
-    const canConfigure = game.user.isGM || this.actor.isOwner;
+    const canConfigure = game.user?.isGM || this.actor.isOwner;
     if (this.options.editable && canConfigure) {
-      buttons = [
-        {
-          label: game.i18n.localize("OSE.dialog.tweaks"),
-          class: "configure-actor",
-          icon: "fas fa-code",
-          onclick: (event) => this._onConfigureActor(event),
-        },
-      ].concat(buttons);
+      buttons.unshift({
+        label: game.i18n.localize("OSE.dialog.tweaks"),
+        class: "configure-actor",
+        icon: "fas fa-code",
+        onclick: (event) => this._onConfigureActor(event),
+      });
     }
     return buttons;
   }
 
   /**
-   * 
-   * @param {JQuery} html 
-   * @returns 
+   *
+   * @param {JQuery} html
+   * @returns
    */
-  activateListeners(html) {
+  activateListeners(html: JQuery) {
     super.activateListeners(html);
 
     // Attributes
@@ -487,7 +548,7 @@ export class OseActorSheet extends ActorSheet {
 
     html.find(".item-edit").click((event) => {
       const item = this._getItemFromActor(event);
-      item.sheet.render(true);
+      item.sheet?.render(true);
     });
 
     html.find(".item-delete").click((event) => {
@@ -495,9 +556,11 @@ export class OseActorSheet extends ActorSheet {
     });
 
     html
-      .find(".quantity input")
+      .find<HTMLInputElement>(".quantity input")
       .click((ev) => ev.target.select())
-      .change(this._updateItemQuantity.bind(this));
+      .change((ev) => {
+        this._updateItemQuantity(ev);
+      });
 
     // Consumables
     html.find(".consumable-counter .full-mark").click((event) => {
@@ -509,8 +572,10 @@ export class OseActorSheet extends ActorSheet {
 
     // Spells
     html
-      .find(".memorize input")
-      .click((event) => event.target.select())
+      .find<HTMLInputElement>(".memorize input")
+      .click((event) => {
+        event.target.select();
+      })
       .change(this._onSpellChange.bind(this));
 
     html
