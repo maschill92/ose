@@ -309,8 +309,8 @@ export class OseActorSheet<
     ...[itemData]: Parameters<ActorSheet["_onDropItemCreate"]>
   ) {
     //override to fix hidden items because their original containers don't exist on this actor
-    itemData = itemData instanceof Array ? itemData : [itemData];
-    itemData.forEach((item) => {
+    const itemDataArray = itemData instanceof Array ? itemData : [itemData];
+    itemDataArray.forEach((item) => {
       if (
         "containerId" in item.data &&
         item.data.containerId &&
@@ -326,10 +326,11 @@ export class OseActorSheet<
           containedItem.data.containerId = "";
         });
         // @ts-ignore align containedItems type with itemData
-        itemData.push(...containedItems);
+        itemDataArray.push(...containedItems);
       }
     });
-    return this.actor.createEmbeddedDocuments("Item", itemData);
+    // @ts-ignore need to improve these types?
+    return this.actor.createEmbeddedDocuments("Item", itemDataArray);
   }
 
   /* -------------------------------------------- */

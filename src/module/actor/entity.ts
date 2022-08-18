@@ -1,4 +1,5 @@
-//@ts-nocheck
+import { ActorDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData";
+import { Attribute, ExplorationSkill, Save } from "../config";
 import { OseDice } from "../dice";
 import { OseItem } from "../item/entity";
 
@@ -30,12 +31,10 @@ export class OseActor extends Actor {
     data.movement.encounter = Math.floor(data.movement.base / 3);
   }
 
-  /**
-   *
-   * @param {DeepPartial<import("@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData").ActorDataConstructorData>} data
-   * @param {*} options
-   */
-  static async update(data, options = {}) {
+  static async update(
+    data: DeepPartial<ActorDataConstructorData>,
+    options = {}
+  ) {
     // Compute AAC from AC
     if (data.data?.ac?.value) {
       data.data.aac = { value: 19 - data.data.ac.value };
@@ -61,9 +60,15 @@ export class OseActor extends Actor {
    * @param {*} context
    * @returns
    */
-  async createEmbeddedDocuments(embeddedName, data = [], context = {}) {
+  override async createEmbeddedDocuments(
+    ...[embeddedName, data, context = {}]: Parameters<
+      Actor["createEmbeddedDocuments"]
+    >
+  ) {
     data.map((item) => {
       if (item.img === undefined) {
+        // FIXME: this default image logic should probably go into item#_preCreate see OseItem.create
+        // @ts-ignore should this happen in Item constructor?
         item.img = item.type ? OseItem.defaultIcons[item.type] : null;
       }
     });
@@ -78,7 +83,7 @@ export class OseActor extends Actor {
    * @param {number} value
    * @returns
    */
-  getExperience(value) {
+  getExperience(value: number) {
     if (this.data.type != "character") {
       return;
     }
@@ -99,11 +104,7 @@ export class OseActor extends Actor {
     });
   }
 
-  /**
-   *
-   * @returns {boolean}
-   */
-  isNew() {
+  isNew(): boolean {
     if (this.data.type == "character") {
       const data = this.data.data;
       let ct = 0;
@@ -122,15 +123,11 @@ export class OseActor extends Actor {
     return false;
   }
 
-  /**
-   *
-   * @param {number} hd
-   */
-  generateSave(hd) {
+  generateSave(hd: number) {
     /**
      * @type {typeof CONFIG.OSE.monster_saves[0] | null}
      */
-    let saves = null;
+    let saves: typeof CONFIG.OSE.monster_saves[0] | null = null;
     for (let i = 0; i <= hd; i++) {
       let tmp = CONFIG.OSE.monster_saves[i];
       if (tmp) {
@@ -189,13 +186,7 @@ export class OseActor extends Actor {
     });
   }
 
-  /**
-   *
-   * @param {import("../config").Save} save
-   * @param {RollOptions} options
-   * @returns
-   */
-  rollSave(save, options = {}) {
+  rollSave(save: Save, options: RollOptions = {}) {
     const label = game.i18n.localize(`OSE.saves.${save}.long`);
     const rollParts = ["1d20"];
 
@@ -228,12 +219,7 @@ export class OseActor extends Actor {
     });
   }
 
-  /**
-   *
-   * @param {RollOptions} options
-   * @returns
-   */
-  rollMorale(options = {}) {
+  rollMorale(options: RollOptions = {}) {
     if (this.data.type !== "monster") {
       return;
     }
@@ -259,12 +245,7 @@ export class OseActor extends Actor {
     });
   }
 
-  /**
-   *
-   * @param {RollOptions} options
-   * @returns
-   */
-  rollLoyalty(options = {}) {
+  rollLoyalty(options: RollOptions = {}) {
     const label = game.i18n.localize(`OSE.roll.loyalty`);
     const rollParts = ["2d6"];
 
@@ -288,12 +269,7 @@ export class OseActor extends Actor {
     });
   }
 
-  /**
-   *
-   * @param {RollOptions} options
-   * @returns
-   */
-  rollReaction(options = {}) {
+  rollReaction(options: RollOptions = {}) {
     const rollParts = ["2d6"];
 
     const data = {
@@ -335,13 +311,7 @@ export class OseActor extends Actor {
     });
   }
 
-  /**
-   *
-   * @param {import("../config").Attribute} score
-   * @param {RollOptions} options
-   * @returns
-   */
-  rollCheck(score, options = {}) {
+  rollCheck(score: Attribute, options: RollOptions = {}) {
     if (this.data.type !== "character") return;
 
     const label = game.i18n.localize(`OSE.scores.${score}.long`);
@@ -379,7 +349,7 @@ export class OseActor extends Actor {
    * @param {RollOptions} options
    * @returns
    */
-  rollHitDice(options = {}) {
+  rollHitDice(options: RollOptions = {}) {
     const label = game.i18n.localize(`OSE.roll.hd`);
     const rollParts = [this.data.data.hp.hd];
     if (this.data.type == "character") {
@@ -410,7 +380,7 @@ export class OseActor extends Actor {
    * @param {RollOptions & {check?: "wilderness" | "wilderness"}} options
    * @returns
    */
-  rollAppearing(options = {}) {
+  rollAppearing(options: RollOptions & { check?: "wilderness" | "wilderness"; } = {}) {
     if (this.data.type !== "monster") return;
 
     const rollParts = [];
@@ -443,13 +413,7 @@ export class OseActor extends Actor {
     });
   }
 
-  /**
-   *
-   * @param {import("../config").ExplorationSkill} expl
-   * @param {RollOptions} options
-   * @returns
-   */
-  rollExploration(expl, options = {}) {
+  rollExploration(expl: ExplorationSkill, options: RollOptions = {}) {
     if (this.data.type !== "character") return;
 
     const label = game.i18n.localize(`OSE.exploration.${expl}.long`);
@@ -487,7 +451,7 @@ export class OseActor extends Actor {
    * @param {*} attData
    * @param {RollOptions} options
    */
-  rollDamage(attData, options = {}) {
+  rollDamage(attData: any, options: RollOptions = {}) {
     const rollData = {
       actor: this.data,
       item: attData.item,
@@ -526,7 +490,7 @@ export class OseActor extends Actor {
    * @param {*} type
    * @param {*} options
    */
-  async targetAttack(data, type, options) {
+  async targetAttack(data: any, type: any, options: any) {
     if (game?.user?.targets && game?.user?.targets.size > 0) {
       for (let t of game.user.targets.values()) {
         data.roll.target = t;
@@ -546,7 +510,7 @@ export class OseActor extends Actor {
    * @param {RollOptions & {type?: string; skipDialog?: boolean}} options
    * @returns
    */
-  rollAttack(attData, options = {}) {
+  rollAttack(attData: any, options: RollOptions & { type?: string; skipDialog?: boolean; } = {}) {
     const data = this.data.data;
     const rollParts = ["1d20"];
     const dmgParts = [];
@@ -614,7 +578,7 @@ export class OseActor extends Actor {
    * @param {1 | -1} multiplier
    * @returns
    */
-  async applyDamage(amount = 0, multiplier = 1) {
+  async applyDamage(amount: number | string = 0, multiplier: 1 | -1 = 1) {
     amount = Math.floor(parseInt(amount.toString()) * multiplier);
     const hp = this.data.data.hp;
 
@@ -634,7 +598,7 @@ export class OseActor extends Actor {
    * @param {number} val
    * @returns {any}
    */
-  static _valueFromTable(table, val) {
+  static _valueFromTable(table: Record<number, number | string>, val: number): any {
     let output;
     for (let i = 0; i <= val; i++) {
       if (table[i] != undefined) {

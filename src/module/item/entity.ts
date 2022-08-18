@@ -24,6 +24,7 @@ export class OseItem extends Item {
     data: ItemDataConstructorData,
     context: DocumentModificationContext
   ) {
+    // FIXME: this default image logic should probably go into item#_preCreate see actor#createEmbeddedDocuments...
     if (data.img === undefined) {
       data.img = this.defaultIcons[data.type];
     }
@@ -125,7 +126,9 @@ export class OseItem extends Item {
     return true;
   }
 
-  async rollFormula(options: { event?: JQuery.Event, skipDialog?: boolean } = {}) {
+  async rollFormula(
+    options: { event?: JQuery.Event; skipDialog?: boolean } = {}
+  ) {
     const data = this.data.data;
     // @ts-ignore should check data.type.
     if (!data.roll) {
