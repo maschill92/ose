@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { OseActorSheet } from "./actor-sheet";
 import { OseCharacterModifiers } from "../dialog/character-modifiers";
 import { OseCharacterGpCost } from "../dialog/character-gp-cost.js";
