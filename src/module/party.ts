@@ -12,7 +12,7 @@ export const addControl = (object: ActorDirectory, html: JQuery) => {
   });
 };
 
-export const update = (actor: OseActor, data: never) => {
+export const update: Hooks.UpdateDocument<typeof OseActor> = (actor: OseActor, data) => {
   const partyFlag = actor.getFlag(game.system.id, "party");
 
   if (partyFlag === null) {
