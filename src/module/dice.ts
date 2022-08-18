@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { OSE } from "./config";
 
 export class OseDice {
