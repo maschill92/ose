@@ -125,18 +125,18 @@ export class OseItem extends Item {
     return true;
   }
 
-  async rollFormula(options: { event?: JQuery.Event } = {}) {
-    if (this.data.type !== "ability") {
-      return;
-    }
+  async rollFormula(options: { event?: JQuery.Event, skipDialog?: boolean } = {}) {
     const data = this.data.data;
+    // @ts-ignore should check data.type.
     if (!data.roll) {
       throw new Error("This Item does not have a formula to roll!");
     }
 
     const label = `${this.name}`;
+    // @ts-ignore should check data.type.
     const rollParts = [data.roll];
 
+    // @ts-ignore should check data.type.
     let type = data.rollType;
 
     const newData = {
@@ -144,7 +144,9 @@ export class OseItem extends Item {
       item: this.data,
       roll: {
         type: type,
+        // @ts-ignore should check data.type.
         target: data.rollTarget,
+        // @ts-ignore should check data.type.
         blindroll: data.blindroll,
       },
     };
@@ -154,7 +156,7 @@ export class OseItem extends Item {
       event: options.event,
       parts: rollParts,
       data: newData,
-      skipDialog: true,
+      skipDialog: options.skipDialog ?? true,
       // @ts-ignore actor should be OseActor, use this.actor?
       speaker: ChatMessage.getSpeaker({ actor: this }),
       flavor: game.i18n.format("OSE.roll.formula", { label: label }),
@@ -453,7 +455,6 @@ export class OseItem extends Item {
     }
 
     // Attack and Damage Rolls
-    debugger;
     //@ts-ignore item doesn't have a rollDamage function.
     if (action === "damage") await item.rollDamage({ event });
     else if (action === "formula") await item.rollFormula({ event });
