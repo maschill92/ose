@@ -17,9 +17,6 @@ export class OseActor extends Actor {
     this.computeEncumbrance();
     this.computeTreasure();
 
-    this.update({});
-    this.data.type;
-
     // Determine Initiative
     if (game.settings.get("ose", "initiative") != "group") {
       data.initiative.value = data.initiative.mod;
