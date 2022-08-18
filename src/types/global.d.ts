@@ -1,7 +1,7 @@
 import { type ActorDataProperties, type ActorDataSource } from "./actor-data";
 import { OseActor } from "../module/actor/entity";
 import { OseCombat } from "../module/combat";
-import type { OseConfig } from "../module/config";
+import type { OseConfig, PatternColor } from "../module/config";
 import { OseItem } from "../module/item/entity";
 import { ItemDataProperties, ItemDataSource } from "./item-data";
 
@@ -57,5 +57,12 @@ declare global {
         treasure: boolean;
       };
     };
+    Combatant: {
+      ose: {
+        group?: PatternColor;
+        prepareSpell?: boolean;
+        moveInCombat?: boolean;
+      }
+    }
   }
 }
