@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { OseActorSheet } from "./actor-sheet";
 import { OSE } from "../config";
 
