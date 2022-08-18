@@ -1,4 +1,4 @@
-// @ts-nocheck
+import { DICE_ROLL_MODES } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/constants.mjs";
 import { OSE } from "./config";
 
 export class OseDice {
@@ -10,11 +10,11 @@ export class OseDice {
     speaker = null,
     form = null,
     chatMessage = true,
-  } = {}) {
+  }: RollOpts = {}) {
     const template = `${OSE.systemPath()}/templates/chat/roll-result.html`;
 
     let chatData = {
-      user: game.user.id,
+      user: game.user?.id,
       speaker: speaker,
     };
 
@@ -37,8 +37,8 @@ export class OseDice {
     rollMode = form ? form.rollMode.value : rollMode;
 
     // Force blind roll (ability formulas)
-    if (!form && data.roll.blindroll) {
-      rollMode = game.user.isGM ? "selfroll" : "blindroll";
+    if (!form && data.roll?.blindroll) {
+      rollMode = game.user?.isGM ? "selfroll" : "blindroll";
     }
 
     if (["gmroll", "blindroll"].includes(rollMode))
@@ -202,7 +202,7 @@ export class OseDice {
     flavor = null,
     speaker = null,
     form = null,
-  } = {}) {
+  }: RollOpts = {}) {
     const template = `${OSE.systemPath()}/templates/chat/roll-attack.html`;
     let chatData = {
       user: game.user.id,
@@ -294,8 +294,8 @@ export class OseDice {
 
   /**
    * JS doc to support typescript
-   * @param {object} param0 
-   * @returns 
+   * @param {object} param0
+   * @returns
    */
   static async RollSave({
     parts = [],
@@ -376,30 +376,32 @@ export class OseDice {
 
   /**
    * JS doc to support typescript
-   * @param {object} param0 
-   * @returns 
+   * @param {object} param0
+   * @returns
    */
-  static async Roll({
-    parts = [],
-    data = {},
-    skipDialog = false,
-    speaker = null,
-    flavor = null,
-    title = null,
-    chatMessage = true,
-    flags = {},
-  } = {}) {
+  static async Roll(
+    {
+      parts = [],
+      data = {},
+      skipDialog = false,
+      speaker = null,
+      flavor = null,
+      title,
+      chatMessage = true,
+      flags = {},
+    }: RollOpts = { title: "" }
+  ) {
     let rolled = false;
     const template = `${OSE.systemPath()}/templates/chat/roll-dialog.html`;
     let dialogData = {
       formula: parts.join(" "),
       data: data,
-      rollMode: data.roll.blindroll
+      rollMode: data.roll?.blindroll
         ? "blindroll"
         : game.settings.get("core", "rollMode"),
       rollModes: CONFIG.Dice.rollModes,
     };
-    let rollData = {
+    let rollData: RollOpts = {
       parts: parts,
       data: data,
       title: title,
@@ -409,32 +411,34 @@ export class OseDice {
       flags: flags,
     };
     if (skipDialog) {
-      return ["melee", "missile", "attack"].includes(data.roll.type)
+      return data.roll?.type &&
+        ["melee", "missile", "attack"].includes(data.roll.type)
         ? OseDice.sendAttackRoll(rollData)
         : OseDice.sendRoll(rollData);
     }
 
-    let buttons = {
+    let buttons: Dialog.Data["buttons"] = {
       ok: {
         label: game.i18n.localize("OSE.Roll"),
         icon: '<i class="fas fa-dice-d20"></i>',
         callback: (html) => {
           rolled = true;
-          rollData.form = html[0].querySelector("form");
-          roll = ["melee", "missile", "attack"].includes(data.roll.type)
-            ? OseDice.sendAttackRoll(rollData)
-            : OseDice.sendRoll(rollData);
+          rollData.form = $(html).find("form");
+          roll =
+            data.roll?.type &&
+            ["melee", "missile", "attack"].includes(data.roll.type)
+              ? OseDice.sendAttackRoll(rollData)
+              : OseDice.sendRoll(rollData);
         },
       },
       cancel: {
         icon: '<i class="fas fa-times"></i>',
         label: game.i18n.localize("OSE.Cancel"),
-        callback: (html) => {},
       },
     };
 
     const html = await renderTemplate(template, dialogData);
-    let roll;
+    let roll: any;
 
     //Create Dialog window
     return new Promise((resolve) => {
@@ -449,4 +453,27 @@ export class OseDice {
       }).render(true);
     });
   }
+}
+
+interface RollOpts {
+  parts?: (string | number)[];
+  data?: {
+    roll?: { blindroll?: boolean; type: string };
+  };
+  skipDialog?: boolean;
+  speaker?: unknown | null;
+  flavor?: string | null;
+  title: string;
+  chatMessage?: boolean;
+  flags?: {};
+  form?:
+    | JQuery<HTMLFormElement>
+    | {
+        rollMode: {
+          value: keyof CONFIG.Dice.RollModes;
+        };
+        bonus: {
+          value?: number | string;
+        };
+      };
 }
