@@ -23,7 +23,7 @@ export class OseCharacterCreator extends FormApplication<
     avg: number;
     std: number;
   } | null = null;
-  scores: Record<Attribute, { value: number }> | null = null;
+  scores: Partial<Record<Attribute, { value: number }>> | null = null;
   gold: number | null = null;
 
   static get defaultOptions() {
@@ -70,14 +70,7 @@ export class OseCharacterCreator extends FormApplication<
       avg: 0,
       std: 0,
     };
-    this.scores = {
-      str: { value: 0 },
-      wis: { value: 0 },
-      dex: { value: 0 },
-      int: { value: 0 },
-      cha: { value: 0 },
-      con: { value: 0 },
-    };
+    this.scores = {};
     this.gold = 0;
     return data;
   }
@@ -102,7 +95,7 @@ export class OseCharacterCreator extends FormApplication<
     stats.find(".std").text(Math.round(100 * std) / 100);
 
     if (n >= 6) {
-      $(ev)
+      $(ev.currentTarget)
         .closest("form")
         .find('button[type="submit"]')
         .removeAttr("disabled");
@@ -201,7 +194,8 @@ export class OseCharacterCreator extends FormApplication<
       });
     });
 
-    html.find("input.score-value").on("", (ev) => {
+    html.find("input.score-value").change((ev) => {
+      // FIXME: When I manually change a score, it isn't reflected in the final results when I click save. This is an issue in production.
       this.doStats(ev);
     });
 
