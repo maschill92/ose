@@ -156,7 +156,6 @@ export class OseCharacterGpCost extends FormApplication<
   activateListeners(html: JQuery) {
     super.activateListeners(html);
     html.find("a.auto-deduct").click(async (ev) => {
-      debugger;
       this.submit();
     });
   }
