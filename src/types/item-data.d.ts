@@ -1,4 +1,5 @@
 import { ArmorType, PatternColor, RollType, Save } from "../module/config";
+import { OseItem } from "../module/item/entity";
 
 type Tags = {title: string; value: string;}[]
 
@@ -63,7 +64,9 @@ interface ItemDataSourceItem {
 interface ItemDataSourceContainerData
   extends ItemDataSourceTemplateCommon,
     ItemDataSourceTemplatePhysical {
-  itemIds: string[];
+  // FIXME: This is defined in template.json... It is used as an OseItem[]
+  // at the very least it should be moved to a "properties" type as it's derived?
+  itemIds: OseItem[];
 }
 interface ItemDataSourceContainer {
   type: "container";
