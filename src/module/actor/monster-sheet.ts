@@ -1,17 +1,11 @@
-// @ts-nocheck
 import { OseActorSheet } from "./actor-sheet";
-import { OSE } from "../config";
+import { OSE, PatternColor } from "../config";
+import { OseItem } from "../item/entity";
 
 /**
  * Extend the basic ActorSheet with some very simple modifications
  */
 export class OseActorSheetMonster extends OseActorSheet {
-  constructor(...args) {
-    super(...args);
-  }
-
-  /* -------------------------------------------- */
-
   /**
    * Extend and override the default options used by the 5e Actor Sheet
    * @returns {Object}
@@ -37,16 +31,20 @@ export class OseActorSheetMonster extends OseActorSheet {
    * Organize and classify Owned Items for Character sheets
    * @private
    */
-  _prepareItems(data) {
+  _prepareItems(data: any) {
+    // FIXME: Similar logic in character-sheet _prepareItems
     const itemsData = this.actor.data.items;
-    const containerContents = {};
-    const attackPatterns = {};
+    const containerContents: { [key: string]: OseItem[] } = {};
+    const attackPatterns: { [key: string]: OseItem[] } = {};
 
     // Partition items by category
-    let [weapons, items, armors, spells, containers] = itemsData.reduce(
+    let [weapons, items, armors, spells, containers] = itemsData.reduce<
+      [OseItem[], OseItem[], OseItem[], OseItem[], OseItem[]]
+    >(
       (arr, item) => {
         // Classify items into types
-        const containerId = item?.data?.data?.containerId;
+        const containerId =
+          "containerId" in item?.data?.data ? item.data.data.containerId : null;
         if (containerId) {
           containerContents[containerId] = [
             ...(containerContents[containerId] || []),
@@ -55,7 +53,10 @@ export class OseActorSheetMonster extends OseActorSheet {
           return arr;
         }
         // Grab attack groups
-        if (["weapon", "ability"].includes(item.type)) {
+        if (
+          ["weapon", "ability"].includes(item.type) &&
+          "pattern" in item.data.data
+        ) {
           if (attackPatterns[item.data.data.pattern] === undefined)
             attackPatterns[item.data.data.pattern] = [];
           attackPatterns[item.data.data.pattern].push(item);
@@ -85,29 +86,37 @@ export class OseActorSheetMonster extends OseActorSheet {
     );
 
     // Sort spells by level
-    var sortedSpells = {};
-    var slots = {};
+    var sortedSpells: { [key: number]: OseItem[] } = {};
+    var slots: { [key: number]: number } = {};
     for (var i = 0; i < spells.length; i++) {
-      let lvl = spells[i].data.data.lvl;
+      const spell = spells[i];
+      if (spell.data.type !== "spell") {
+        continue;
+      }
+      let lvl = spell.data.data.lvl;
       if (!sortedSpells[lvl]) sortedSpells[lvl] = [];
       if (!slots[lvl]) slots[lvl] = 0;
-      slots[lvl] += spells[i].data.data.memorized;
-      sortedSpells[lvl].push(spells[i]);
+      slots[lvl] += spell.data.data.memorized;
+      sortedSpells[lvl].push(spell);
     }
     data.slots = {
       used: slots,
     };
-    containers.map((container, key, arr) => {
-      arr[key].data.data.itemIds = containerContents[container.id] || [];
-      arr[key].data.data.totalWeight = containerContents[container.id]?.reduce(
-        (acc, item) => {
-          return (
-            acc +
-            item.data?.data?.weight * (item.data?.data?.quantity?.value || 1)
-          );
-        },
-        0
-      );
+    containers.forEach((container, key, arr) => {
+      if (container.data.type !== "container") {
+        return;
+      }
+      container.data.data.itemIds = containerContents[container.id!] || [];
+      // @ts-ignore add this to derived data?
+      container.data.data.totalWeight = containerContents[
+        container.id!
+      ]?.reduce((acc, item) => {
+        return (
+          acc +
+          // @ts-ignore should to some item.data.type checking here?
+          item.data?.data?.weight * (item.data?.data?.quantity?.value || 1)
+        );
+      }, 0);
       return arr;
     });
     // Assign and return
@@ -123,6 +132,7 @@ export class OseActorSheetMonster extends OseActorSheet {
       ...Object.values(data.attackPatterns),
       ...Object.values(data.owned),
       ...Object.values(data.spells),
+      // @ts-ignore
     ].forEach((o) => o.sort((a, b) => (a.data.sort || 0) - (b.data.sort || 0)));
   }
 
@@ -165,8 +175,8 @@ export class OseActorSheetMonster extends OseActorSheet {
             label: game.i18n.localize("OSE.Ok"),
             icon: '<i class="fas fa-check"></i>',
             callback: (html) => {
-              let hd = html.find('input[name="hd"]').val();
-              this.actor.generateSave({ hd });
+              let hd = $(html).find('input[name="hd"]').val() as string;
+              this.actor.generateSave(parseInt(hd));
             },
           },
           cancel: {
@@ -182,11 +192,11 @@ export class OseActorSheetMonster extends OseActorSheet {
     ).render(true);
   }
 
-  async _onDrop(event) {
+  async _onDrop(event: DragEvent) {
     super._onDrop(event);
-    let data;
+    let data: any;
     try {
-      data = JSON.parse(event.dataTransfer.getData("text/plain"));
+      data = JSON.parse(event.dataTransfer!.getData("text/plain"));
       if (data.type !== "RollTable") return;
     } catch (err) {
       return false;
@@ -195,8 +205,9 @@ export class OseActorSheetMonster extends OseActorSheet {
     let link = "";
     if (data.pack) {
       let tableData = game.packs
-        .get(data.pack)
-        .index.filter((el) => el._id === data.id);
+        ?.get(data.pack)
+        ?.index.filter((el) => el._id === data.id);
+      // @ts-ignore
       link = `@Compendium[${data.pack}.${data.id}]{${tableData[0].name}}`;
     } else {
       link = `@RollTable[${data.id}]`;
@@ -205,13 +216,14 @@ export class OseActorSheetMonster extends OseActorSheet {
   }
 
   /* -------------------------------------------- */
-  async _resetAttacks(event) {
+  async _resetAttacks() {
     const weapons = this.actor.data.items.filter((i) => i.type === "weapon");
     for (let wp of weapons) {
-      const item = this.actor.items.get(wp.id);
+      const item = this.actor.items.get(wp.id!)!;
       await item.update({
         data: {
           counter: {
+            // @ts-ignore data.type checking here?
             value: parseInt(wp.data.data.counter.max),
           },
         },
@@ -219,7 +231,7 @@ export class OseActorSheetMonster extends OseActorSheet {
     }
   }
 
-  async _updateAttackCounter(event) {
+  async _updateAttackCounter(event: JQuery.TriggeredEvent) {
     event.preventDefault();
     const item = this._getItemFromActor(event);
 
@@ -234,9 +246,10 @@ export class OseActorSheetMonster extends OseActorSheet {
     }
   }
 
-  _cycleAttackPatterns(event) {
+  _cycleAttackPatterns(event: JQuery.TriggeredEvent) {
     const item = super._getItemFromActor(event);
-    let currentColor = item.data.data.pattern;
+    // @ts-ignore should to item.data.type checking here?
+    let currentColor = item.data.data.pattern as PatternColor;
     let colors = Object.keys(CONFIG.OSE.colors);
     let index = colors.indexOf(currentColor);
     if (index + 1 == colors.length) {
@@ -253,7 +266,7 @@ export class OseActorSheetMonster extends OseActorSheet {
    * Activate event listeners using the prepared sheet HTML
    * @param html {HTML}   The prepared HTML object ready to be rendered into the DOM
    */
-  activateListeners(html) {
+  activateListeners(html: JQuery) {
     super.activateListeners(html);
 
     html.find(".morale-check a").click((ev) => {
@@ -276,16 +289,16 @@ export class OseActorSheetMonster extends OseActorSheet {
     if (!this.options.editable) return;
 
     html.find(".item-reset[data-action='reset-attacks']").click((ev) => {
-      this._resetAttacks(ev);
+      this._resetAttacks();
     });
 
     html
-      .find(".counter input")
+      .find<HTMLInputElement>(".counter input")
       .click((ev) => ev.target.select())
       .change(this._updateAttackCounter.bind(this));
 
     html.find(".hp-roll").click((ev) => {
-      this.actor.rollHP({ event: ev });
+      this.actor.rollHP();
     });
 
     html.find(".item-pattern").click((ev) => this._cycleAttackPatterns(ev));
