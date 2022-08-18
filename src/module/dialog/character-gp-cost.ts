@@ -1,10 +1,26 @@
-// eslint-disable-next-line no-unused-vars
-// @ts-nocheck
+import { OseActor } from "../actor/entity";
 import { OSE } from "../config";
+import { OseItem } from "../item/entity";
 
-export class OseCharacterGpCost extends FormApplication {
-  constructor(event, preparedData, position) {
-    super(event, position);
+interface OseCharacterGpCostOptions extends FormApplicationOptions {}
+interface OseCharacterGpCostData
+  extends FormApplication.Data<OseActor, OseCharacterGpCostOptions> {
+  user: User;
+}
+
+export class OseCharacterGpCost extends FormApplication<
+  OseCharacterGpCostOptions,
+  OseCharacterGpCostData
+> {
+  private inventory: OseActor["items"] | null = null;
+
+  constructor(
+    event: OseActor,
+    preparedData: any,
+    options: Partial<OseCharacterGpCostOptions>
+  ) {
+    super(event, options);
+    // @ts-ignore mutation of actor data
     this.object.preparedData = preparedData;
   }
   static get defaultOptions() {
@@ -34,7 +50,9 @@ export class OseCharacterGpCost extends FormApplication {
    * Construct and return the data object used to render the HTML template for this form application.
    * @return {Object}
    */
-  async getData() {
+  // @ts-ignore
+  async getData(): Promise<object> {
+    // @ts-ignore
     const data = await foundry.utils.deepClone(this.object.preparedData);
     data.totalCost = await this._getTotalCost(data);
     data.user = game.user;
@@ -42,19 +60,28 @@ export class OseCharacterGpCost extends FormApplication {
     return data;
   }
 
-  async close(options) {
+  async close(options: FormApplication.CloseOptions): Promise<void> {
     return super.close(options);
   }
 
-  async _onSubmit(event, { preventClose = false, preventRender = false } = {}) {
-    super._onSubmit(event, {
+  // @ts-ignore return type is not correct from super._onSubmit
+  async _onSubmit(
+    event: Event,
+    {
+      preventClose = false,
+      preventRender = false,
+    }: FormApplication.OnSubmitOptions = {}
+  ) {
+    await super._onSubmit(event, {
       preventClose: preventClose,
       preventRender: preventRender,
     });
     // Generate gold
     const totalCost = await this._getTotalCost(await this.getData());
     const gp = await this.object.items.find((item) => {
+      debugger;
       return (
+        item.data.type === "item" &&
         (item.name === game.i18n.localize("OSE.items.gp.short") ||
           item.name === "GP") && // legacy behavior used GP, even for other languages
         item.data.data.treasure
