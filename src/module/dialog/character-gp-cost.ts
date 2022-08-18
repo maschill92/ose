@@ -1,3 +1,5 @@
+import { ActorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs";
+import { ItemDataSourceItemData } from "../../types/item-data";
 import { OseActor } from "../actor/entity";
 import { OSE } from "../config";
 import { OseItem } from "../item/entity";
@@ -52,7 +54,7 @@ export class OseCharacterGpCost extends FormApplication<
    */
   // @ts-ignore
   async getData(): Promise<object> {
-    // @ts-ignore
+    // @ts-ignore preparedData is created/modified in constructor.
     const data = await foundry.utils.deepClone(this.object.preparedData);
     data.totalCost = await this._getTotalCost(data);
     data.user = game.user;
@@ -72,14 +74,14 @@ export class OseCharacterGpCost extends FormApplication<
       preventRender = false,
     }: FormApplication.OnSubmitOptions = {}
   ) {
-    await super._onSubmit(event, {
+    // await
+    super._onSubmit(event, {
       preventClose: preventClose,
       preventRender: preventRender,
     });
     // Generate gold
     const totalCost = await this._getTotalCost(await this.getData());
-    const gp = await this.object.items.find((item) => {
-      debugger;
+    const gp = this.object.items.find((item) => {
       return (
         item.data.type === "item" &&
         (item.name === game.i18n.localize("OSE.items.gp.short") ||
@@ -89,8 +91,10 @@ export class OseCharacterGpCost extends FormApplication<
     });
     if (!gp) {
       ui.notifications.error(game.i18n.localize("OSE.error.noGP"));
+      return;
     }
-    const newGP = gp.data.data.quantity.value - totalCost;
+    const newGP =
+      (gp.data.data as ItemDataSourceItemData).quantity.value - totalCost;
     if (newGP >= 0) {
       this.object.updateEmbeddedDocuments("Item", [
         { _id: gp.id, "data.quantity.value": newGP },
@@ -106,10 +110,10 @@ export class OseCharacterGpCost extends FormApplication<
    * @param formData {Object}   The object of validated form data with which to update the object
    * @private
    */
-  async _updateObject(event, formData) {
+  async _updateObject(event: Event, formData: object) {
     event.preventDefault();
     const items = this.object.data.items;
-
+    //@ts-ignore Can't seem to get this function to run, ignoring all issues here.
     const speaker = ChatMessage.getSpeaker({ actor: this });
     const templateData = await this.getData();
     const content = await renderTemplate(
@@ -124,18 +128,23 @@ export class OseCharacterGpCost extends FormApplication<
     await this.object.update(formData);
 
     // Re-draw the updated sheet
-    this.object.sheet.render(true);
+    this.object.sheet?.render(true);
   }
 
+  // FIXME: Is ActorData the correct type?
+  // @ts-ignore this is prepared data which should be in dirived data on the actor? Perhaps it should come out of getData()
   async _getTotalCost(data) {
     let total = 0;
     const physical = ["item", "container", "weapon", "armor"];
-    data.items.forEach((item) => {
+    data.items.forEach((item: OseItem) => {
       if (
-        physical.some((itemType) => item.type === itemType) &&
+        physical.includes(item.type) &&
+        // @ts-ignore need to explicitly check item.type === 'item' || item.type...
         !item.data.treasure
-      )
+        )
+        // @ts-ignore
         if (item.data.quantity.max) total += item.data.cost;
+        // @ts-ignore
         else total += item.data.cost * item.data.quantity.value;
     });
     return total;
@@ -144,9 +153,10 @@ export class OseCharacterGpCost extends FormApplication<
   /* -------------------------------------------- */
 
   /** @override */
-  activateListeners(html) {
+  activateListeners(html: JQuery) {
     super.activateListeners(html);
     html.find("a.auto-deduct").click(async (ev) => {
+      debugger;
       this.submit();
     });
   }
