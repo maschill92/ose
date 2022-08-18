@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { OseEntityTweaks } from "../dialog/entity-tweaks";
 import { OSE } from "../config";
 
