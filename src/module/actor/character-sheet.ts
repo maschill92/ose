@@ -167,7 +167,6 @@ export class OseActorSheetCharacter extends OseActorSheet {
             label: game.i18n.localize("OSE.Ok"),
             icon: '<i class="fas fa-check"></i>',
             callback: (html) => {
-              debugger;
               resolve({
                 choice: $(html).find('select[name="choice"]').val() as string,
               });
@@ -188,7 +187,6 @@ export class OseActorSheetCharacter extends OseActorSheet {
     // @ts-ignore
     let update = duplicate(data[table]);
     this._chooseLang().then((dialogInput) => {
-      debugger;
       // @ts-ignore choice is a stringified number used as an index on the languages array
       const name = CONFIG.OSE.languages[dialogInput.choice];
       if (update.value) {

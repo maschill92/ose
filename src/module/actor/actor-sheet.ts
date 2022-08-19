@@ -220,7 +220,6 @@ export class OseActorSheet<
   }
 
   _onSortItem(event: DragEvent, itemData: foundry.data.ItemData["_source"]) {
-    debugger;
     const source = this.actor.items.get(itemData._id!)!;
     const siblings = this.actor.items.filter((i) => {
       return i.data._id !== source?.data._id;
@@ -353,7 +352,6 @@ export class OseActorSheet<
             label: game.i18n.localize("OSE.Ok"),
             icon: '<i class="fas fa-check"></i>',
             callback: (html) => {
-              debugger;
               const $html = $(html);
               resolve({
                 type: $html

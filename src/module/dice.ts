@@ -487,7 +487,6 @@ export class OseDice {
         buttons: buttons,
         default: "ok",
         close: () => {
-          debugger
           resolve(rolled ? roll : false);
         },
       }).render(true);
