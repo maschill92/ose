@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Import Modules
 import { OseItemSheet } from "./module/item/item-sheet";
 import { OseActorSheetCharacter } from "./module/actor/character-sheet";
