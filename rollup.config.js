@@ -4,7 +4,7 @@ const typescript = require("@rollup/plugin-typescript");
 
 module.exports = () =>
   defineConfig({
-    input: "src/ose.js",
+    input: "src/ose.ts",
     output: {
       dir: "dist/module/",
       format: "es",

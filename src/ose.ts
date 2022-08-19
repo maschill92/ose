@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Import Modules
 import { OseItemSheet } from "./module/item/item-sheet";
 import { OseActorSheetCharacter } from "./module/actor/character-sheet";
@@ -88,12 +87,15 @@ Hooks.once("setup", function () {
     "armor",
     "colors",
     "tags",
-  ];
-  for (let o of toLocalize) {
-    CONFIG.OSE[o] = Object.entries(CONFIG.OSE[o]).reduce((obj, e) => {
-      obj[e[0]] = game.i18n.localize(e[1]);
-      return obj;
-    }, {});
+  ] as const;
+  for (let configKey of toLocalize) {
+    // @ts-ignore typescript doesn't have native support for keeping Record types intact when using fromEntries/entries
+    CONFIG.OSE[configKey] = Object.fromEntries(
+      Object.entries(CONFIG.OSE[configKey]).map(([k, v]) => [
+        k,
+        game.i18n.localize(v),
+      ])
+    );
   }
 
   // Custom languages
@@ -112,7 +114,7 @@ Hooks.once("ready", async () => {
 });
 
 // License info
-Hooks.on("renderSidebarTab", async (object, html) => {
+Hooks.on("renderSidebarTab", ((object, html) => {
   if (object instanceof ActorDirectory) {
     party.addControl(object, html);
   }
@@ -126,32 +128,34 @@ Hooks.on("renderSidebarTab", async (object, html) => {
 
     // License text
     const template = `${OSE.systemPath()}/templates/chat/license.html`;
-    const rendered = await renderTemplate(template);
-    gamesystem.find(".system").append(rendered);
+    renderTemplate(template, {}).then((rendered) => {
+      gamesystem.find(".system").append(rendered);
 
-    // User guide
-    let docs = html.find("button[data-action='docs']");
-    const styling =
-      "border:none;margin-right:2px;vertical-align:middle;margin-bottom:5px";
-    $(
-      `<button data-action="userguide"><img src='systems/ose/assets/dragon.png' width='16' height='16' style='${styling}'/>Old School Guide</button>`
-    ).insertAfter(docs);
-    html.find('button[data-action="userguide"]').click((ev) => {
-      new FrameViewer("https://vttred.github.io/ose", {
-        resizable: true,
-      }).render(true);
+      // User guide
+      let docs = html.find("button[data-action='docs']");
+      const styling =
+        "border:none;margin-right:2px;vertical-align:middle;margin-bottom:5px";
+      $(
+        `<button data-action="userguide"><img src='systems/ose/assets/dragon.png' width='16' height='16' style='${styling}'/>Old School Guide</button>`
+      ).insertAfter(docs);
+      html.find('button[data-action="userguide"]').click((ev) => {
+        // @ts-ignore @league-of-foundry-developers/foundry-vtt-types has the wrong types (https://github.com/League-of-Foundry-Developers/foundry-vtt-types/issues/2197)
+        new FrameViewer("https://vttred.github.io/ose", {
+          resizable: true,
+        }).render(true);
+      });
     });
   }
-});
+}) as Hooks.RenderApplication<SidebarTab>);
 
-Hooks.on("preCreateCombatant", (combat, data, options, id) => {
+Hooks.on("preCreateCombatant", ((combat, data, options, id) => {
   let init = game.settings.get("ose", "initiative");
   if (init == "group") {
     OseCombat.addCombatant(combat, data, options, id);
   }
-});
+}) as Hooks.PreCreateDocument<typeof Combatant>);
 
-Hooks.on("updateCombatant", OseCombat.debounce(OseCombat.updateCombatant), 100);
+Hooks.on("updateCombatant", OseCombat.debounce(OseCombat.updateCombatant, 100));
 Hooks.on("renderCombatTracker", OseCombat.debounce(OseCombat.format, 100));
 Hooks.on("preUpdateCombat", OseCombat.preUpdateCombat);
 Hooks.on(
@@ -159,7 +163,8 @@ Hooks.on(
   OseCombat.debounce(OseCombat.addContextEntry, 100)
 );
 
-Hooks.on("renderChatLog", (app, html, data) => OseItem.chatListeners(html));
+Hooks.on("renderChatLog", ((app, html, data) =>
+  OseItem.chatListeners(html)) as Hooks.RenderApplication<ChatLog>);
 Hooks.on("getChatLogEntryContext", chat.addChatMessageContextOptions);
 Hooks.on("renderChatMessage", chat.addChatMessageButtons);
 Hooks.on("renderRollTableConfig", treasure.augmentTable);
