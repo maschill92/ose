@@ -64,6 +64,7 @@ export async function rollItemMacro(itemName: string): Promise<void> {
     );
   } else if (items.length === 0) {
     ui.notifications.error(
+      // FIXME: This isn't in any lang files.
       game.i18n.format("OSE.warn.noItemWithName", {
         actorName: actor?.name,
         itemName: itemName,

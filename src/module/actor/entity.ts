@@ -237,7 +237,13 @@ export class OseActor extends Actor {
     return OseDice.Roll({
       event: options.event,
       parts: rollParts,
-      data: data,
+      data: {
+        actor: this.data,
+        roll: {
+          type: "below",
+          target: this.data.data.details.morale,
+        },
+      },
       skipDialog: true,
       speaker: ChatMessage.getSpeaker({ actor: this }),
       flavor: game.i18n.localize("OSE.roll.morale"),
