@@ -11,7 +11,7 @@ export class OseDice {
     speaker = null,
     form,
     chatMessage = true,
-  }: RollOpts) {
+  }: RollOpts): Promise<Roll> {
     const template = `${OSE.systemPath()}/templates/chat/roll-result.html`;
 
     let chatData: ChatMessageDataConstructorData = {
@@ -57,7 +57,7 @@ export class OseDice {
 
     templateData.result = OseDice.digestResult(data, roll);
 
-    return new Promise((resolve) => {
+    return new Promise<Roll>((resolve) => {
       roll.render().then((r) => {
         templateData.rollOSE = r;
         renderTemplate(template, templateData).then((content) => {
@@ -88,7 +88,7 @@ export class OseDice {
     });
   }
 
-  private static digestResult(data: RollOpts["data"], roll: Roll) {
+  private static digestResult(data: RollOpts["data"], roll: Roll): DigestedAttackRoll {
     const rollTotal = roll.total!;
     let result: DigestedAttackRoll = {
       isSuccess: false,
@@ -230,7 +230,7 @@ export class OseDice {
     flavor = null,
     speaker = null,
     form,
-  }: RollOpts) {
+  }: RollOpts): Promise<Roll> {
     const template = `${OSE.systemPath()}/templates/chat/roll-attack.html`;
     const chatData: ChatMessageDataConstructorData = {
       user: game.user?.id,
@@ -281,7 +281,7 @@ export class OseDice {
 
     templateData.result = OseDice.digestAttackResult(data, roll);
 
-    return new Promise((resolve) => {
+    return new Promise<Roll>((resolve) => {
       roll.render().then((r) => {
         templateData.rollOSE = r;
         dmgRoll.render().then((dr) => {
@@ -347,7 +347,7 @@ export class OseDice {
     flavor = null,
     title,
     chatMessage = true,
-  }: RollOpts) {
+  }: RollOpts): Promise<Roll> {
     let rolled = false;
     const template = `${OSE.systemPath()}/templates/chat/roll-dialog.html`;
     let dialogData = {
@@ -402,7 +402,7 @@ export class OseDice {
     let roll: any;
 
     //Create Dialog window
-    return new Promise((resolve) => {
+    return new Promise<Roll>((resolve) => {
       new Dialog({
         title: title,
         content: html,
@@ -429,7 +429,7 @@ export class OseDice {
     title,
     chatMessage,
     flags,
-  }: RollOpts) {
+  }: RollOpts): Promise<Roll> {
     let rolled = false;
     const template = `${OSE.systemPath()}/templates/chat/roll-dialog.html`;
     let dialogData = {
@@ -480,13 +480,14 @@ export class OseDice {
     let roll: any;
 
     //Create Dialog window
-    return new Promise((resolve) => {
+    return new Promise<Roll>((resolve) => {
       new Dialog({
         title: title,
         content: html,
         buttons: buttons,
         default: "ok",
         close: () => {
+          debugger
           resolve(rolled ? roll : false);
         },
       }).render(true);
@@ -509,7 +510,7 @@ interface RollOpts {
   event?: JQuery.Event;
   parts: (string | number)[];
   data: {
-    actor: { [key: string]: any };
+    actor?: { [key: string]: any };
     roll: {
       table?: { [key: string]: unknown };
       blindroll?: boolean;

@@ -181,15 +181,15 @@ export class OseCharacterCreator extends FormApplication<
       let el = ev.currentTarget.parentElement?.parentElement!;
       let score = el!.dataset.score as Attribute;
       this.rollScore(score, { event: ev }).then((r) => {
-        this.scores![score] = { value: r.total };
-        $(el).find("input").val(r.total).trigger("change");
+        this.scores![score] = { value: r.total! };
+        $(el).find("input").val(r.total!).trigger("change");
       });
     });
 
     html.find("a.gold-roll").click((ev) => {
       let el = ev.currentTarget.parentElement?.parentElement?.parentElement!;
       this.rollScore("gold", { event: ev }).then((r) => {
-        this.gold = 10 * r.total;
+        this.gold = 10 * r.total!;
         $(el).find(".gold-value").val(this.gold);
       });
     });
@@ -203,11 +203,11 @@ export class OseCharacterCreator extends FormApplication<
       const stats: Attribute[] = ["str", "int", "dex", "wis", "con", "cha"];
       for (let char of stats) {
         const r = await this.rollScore(char, { event: ev, skipMessage: true });
-        this.scores![char] = { value: r.total };
+        this.scores![char] = { value: r.total! };
       }
       this.doStats(ev);
       const r = await this.rollScore("gold", { event: ev, skipMessage: true });
-      this.gold = 10 * r.total;
+      this.gold = 10 * r.total!;
       this.submit();
     });
   }
