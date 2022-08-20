@@ -3,12 +3,19 @@ import { OSE, OseConfig } from "../config";
 
 interface OseEntityTweaksOptions extends FormApplicationOptions {}
 
-interface OseEntityTweaksData
-  extends FormApplication.Data<OseActor, OseEntityTweaksOptions> {}
+interface OseEntityTweaksData {
+  type: OseActor["data"]["type"];
+  data: OseActor["data"]["data"];
+  user: User;
+  config: OseConfig & {
+    ascendingAC: boolean;
+  };
+}
 
 export class OseEntityTweaks extends FormApplication<
   OseEntityTweaksOptions,
-  OseEntityTweaksData
+  OseEntityTweaksData,
+  OseActor
 > {
   static get defaultOptions() {
     const options = super.defaultOptions;
@@ -34,22 +41,16 @@ export class OseEntityTweaks extends FormApplication<
    * Construct and return the data object used to render the HTML template for this form application.
    * @return {Object}
    */
-  getData(): OseEntityTweaksData {
-    const data = foundry.utils.deepClone(this.object.data);
-
-    if (data.type === "character") {
-      // @ts-ignore modifies Actor data
-      data.isCharacter = true;
-    }
-    // @ts-ignore modifies Actor data
-    data.user = game.user;
-    // @ts-ignore modifies Actor data
-    data.config = {
-      ...CONFIG.OSE,
-      ascendingAC: game.settings.get("ose", "ascendingAC"),
+  async getData(): Promise<OseEntityTweaksData> {
+    return {
+      type: this.object.data.type,
+      config: {
+        ...CONFIG.OSE,
+        ascendingAC: game.settings.get("ose", "ascendingAC"),
+      },
+      data: this.object.data.data,
+      user: game.user!,
     };
-    // @ts-ignore
-    return data;
   }
 
   /* -------------------------------------------- */
