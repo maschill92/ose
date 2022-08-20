@@ -1,4 +1,5 @@
 // Import Modules
+import './ose.scss'
 import { OseItemSheet } from "./module/item/item-sheet";
 import { OseActorSheetCharacter } from "./module/actor/character-sheet";
 import { OseActorSheetMonster } from "./module/actor/monster-sheet";
@@ -139,7 +140,6 @@ Hooks.on("renderSidebarTab", ((object, html) => {
         `<button data-action="userguide"><img src='systems/ose/assets/dragon.png' width='16' height='16' style='${styling}'/>Old School Guide</button>`
       ).insertAfter(docs);
       html.find('button[data-action="userguide"]').click((ev) => {
-        // @ts-ignore @league-of-foundry-developers/foundry-vtt-types has the wrong types (https://github.com/League-of-Foundry-Developers/foundry-vtt-types/issues/2197)
         new FrameViewer("https://vttred.github.io/ose", {
           resizable: true,
         }).render(true);

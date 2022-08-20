@@ -7,7 +7,7 @@
   "compatibleCoreVersion": "9",
   "templateVersion": 2,
   "author": "VTT Red, U~man",
-  "esmodules": ["dist/module/ose.js"],
+  "esmodules": ["dist/ose.js"],
   "styles": ["dist/ose.css"],
   "packs": [],
   "languages": [
