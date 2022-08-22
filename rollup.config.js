@@ -18,6 +18,8 @@ module.exports = defineConfig({
     typescript(),
     scss({
       output: "dist/ose.css",
+      sourceMap: true,
+      watch: 'src/'
     }),
     copy({
       patterns: staticFiles.map((folderName) => `${folderName}/**/*`),
