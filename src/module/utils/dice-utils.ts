@@ -73,7 +73,6 @@ async function renderRollResultTemplate(templateData: {
   };
 }): Promise<string> {
   const template = `${CONFIG.OSE.systemPath()}/templates/chat/roll-result.html`;
-  debugger;
   return renderTemplate(template, {
     ...templateData,
     // adding for backwards compatibility with template file

@@ -132,7 +132,6 @@ export class OseCharacterCreator extends FormApplication<
     });
 
     // Roll gold
-    debugger;
     html.find("a.gold-roll").on("click", (ev) => {
       this.onClickRollGold();
     });
