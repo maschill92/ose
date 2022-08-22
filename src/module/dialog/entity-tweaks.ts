@@ -55,11 +55,6 @@ export class OseEntityTweaks extends FormApplication<
 
   /* -------------------------------------------- */
 
-  /** @override */
-  activateListeners(html: JQuery) {
-    super.activateListeners(html);
-  }
-
   /**
    * This method is called upon form submission after form data is validated
    * @param event {Event}       The initial triggering submission event
@@ -67,12 +62,9 @@ export class OseEntityTweaks extends FormApplication<
    * @private
    */
   async _updateObject(event: Event, formData: object) {
-    event.preventDefault();
     // Update the actor
-    // @ts-ignore
     this.object.update(formData);
     // Re-draw the updated sheet
-    // @ts-ignore
-    this.object.sheet.render(true);
+    this.object.sheet?.render(true);
   }
 }
