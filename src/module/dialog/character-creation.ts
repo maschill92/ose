@@ -1,37 +1,68 @@
 import { OseDice } from "../dice";
 import { Attribute, OSE, OseConfig } from "../config";
 import { OseActor } from "../actor/entity";
+import { simpleRoll } from "../utils/dice-utils";
 
 interface OseCharacterCreatorOptions extends FormApplicationOptions {}
 
-interface OseCharacterCreatorData
-  extends FormApplication.Data<OseActor, OseCharacterCreatorOptions> {
-  user: User;
-  config: OseConfig;
+interface OseCharacterCreatorData {
+  scoreConfig: OseConfig["scores"];
+  stats: {
+    sum: number;
+    avg: number;
+    std: number | null;
+  };
+  scores: ScoresData;
+  gold: number;
+  counters: CountersData;
+  formDisabled: boolean;
 }
+
+type ScoresData = Record<Attribute, number>;
+type CountersData = Record<Attribute | "gold", number>;
 
 /**
  * Dialog to generate a new character. Supports rolling of attribute scores and gold.
  */
 export class OseCharacterCreator extends FormApplication<
   OseCharacterCreatorOptions,
-  OseCharacterCreatorData
+  OseCharacterCreatorData,
+  OseActor
 > {
-  counters: Record<Attribute | "gold", number> | null = null;
   stats: {
     sum: number;
     avg: number;
-    std: number;
-  } | null = null;
-  scores: Partial<Record<Attribute, { value: number }>> | null = null;
-  gold: number | null = null;
+    std: number | null;
+  } = {
+    sum: 0,
+    avg: 0,
+    std: null,
+  };
+  scores: ScoresData = {
+    str: 0,
+    wis: 0,
+    dex: 0,
+    int: 0,
+    cha: 0,
+    con: 0,
+  };
+  counters: CountersData = {
+    str: 0,
+    wis: 0,
+    dex: 0,
+    int: 0,
+    cha: 0,
+    con: 0,
+    gold: 0,
+  };
+  gold = 0;
 
   static get defaultOptions() {
     const options = super.defaultOptions;
     (options.classes = ["ose", "dialog", "creator"]),
       (options.id = "character-creator");
     options.template = `${OSE.systemPath()}/templates/actors/dialogs/character-creation.html`;
-    options.width = 235;
+    options.width = 300;
     return options;
   }
 
@@ -49,118 +80,101 @@ export class OseCharacterCreator extends FormApplication<
   /**
    * Construct and return the data object used to render the HTML template for this form application.
    */
-  override async getData(): Promise<OseCharacterCreatorData> {
-    let data = await super.getData();
-    if (!game.user) {
-      throw new Error("Unable to get game.user");
-    }
-    data.user = game.user;
-    data.config = CONFIG.OSE;
-    this.counters = {
-      str: 0,
-      wis: 0,
-      dex: 0,
-      int: 0,
-      cha: 0,
-      con: 0,
-      gold: 0,
+  override getData(): OseCharacterCreatorData {
+    this.computeStatistics();
+    return {
+      scoreConfig: CONFIG.OSE.scores,
+      stats: this.stats,
+      scores: this.scores,
+      counters: this.counters,
+      gold: this.gold,
+      // disabled if at least one of scores/gold are 0
+      formDisabled: [...Object.values(this.scores), this.gold].some(
+        (num) => num === 0
+      ),
     };
+  }
+
+  private computeStatistics(): void {
+    function getSum(nums: number[]) {
+      return nums.reduce((partialSum, a) => partialSum + a, 0);
+    }
+    function getVariance(nums: number[]) {
+      return getSum(nums.map((v) => (v - avg) ** 2));
+    }
+    function getStandardDeviation(nums: number[]) {
+      return Math.sqrt(getVariance(nums));
+    }
+
+    const scoreNumbers = Object.values(this.scores);
+
+    const sum = getSum(scoreNumbers);
+    const avg = sum / 6; // always use 6
+    const std =
+      scoreNumbers.length > 1 ? getStandardDeviation(scoreNumbers) : null;
+
     this.stats = {
-      sum: 0,
-      avg: 0,
-      std: 0,
-    };
-    this.scores = {};
-    this.gold = 0;
-    return data;
-  }
-
-  /* -------------------------------------------- */
-
-  doStats(ev: JQuery.TriggeredEvent) {
-    const list = $(ev.currentTarget!).closest(".attribute-list");
-    const scores = Object.values(this.scores!);
-    const n = scores.length;
-    const sum = scores.reduce((acc, next) => acc + next.value, 0);
-    const mean = parseFloat(sum.toString()) / n;
-    const std = Math.sqrt(
-      scores
-        .map((x) => Math.pow(x.value - mean, 2))
-        .reduce((acc, next) => acc + next, 0) / n
-    );
-
-    let stats = list.siblings(".roll-stats");
-    stats.find(".sum").text(sum);
-    stats.find(".avg").text(Math.round((10 * sum) / n) / 10);
-    stats.find(".std").text(Math.round(100 * std) / 100);
-
-    if (n >= 6) {
-      $(ev.currentTarget)
-        .closest("form")
-        .find('button[type="submit"]')
-        .removeAttr("disabled");
-    }
-
-    // FIXME: Appears to be polluting the OseActor instance
-    //@ts-ignore
-    this.object.data.stats = {
-      sum: sum,
-      avg: Math.round((10 * sum) / n) / 10,
-      std: Math.round(100 * std) / 100,
+      avg,
+      sum,
+      std,
     };
   }
 
-  rollScore(
-    score: Attribute | "gold",
-    options: { skipMessage?: boolean; event?: JQuery.Event } = {}
-  ) {
-    // Increase counter
-    this.counters![score]++;
+  /** @override */
+  activateListeners(html: JQuery) {
+    super.activateListeners(html);
+    // Roll individual score
+    html.find("a.score-roll").on("click", (ev) => {
+      const attribute = $(ev.currentTarget)
+        .closest(".form-group")
+        .data("score") as Attribute;
+      this.onClickRollScore(attribute);
+    });
 
-    const label =
-      score != "gold" ? game.i18n.localize(`OSE.scores.${score}.long`) : "Gold";
-    const rollParts = ["3d6"];
-    const data = {
-      roll: {
-        type: "result",
-      },
-    };
-    if (options.skipMessage) {
-      return new Roll(rollParts[0]).evaluate();
-    }
-    // Roll and return
-    return OseDice.Roll({
-      event: options.event,
-      parts: rollParts,
-      data: data,
-      skipDialog: true,
-      speaker: ChatMessage.getSpeaker({ actor: this.object }),
-      flavor: game.i18n.format("OSE.dialog.generateScore", {
-        score: label,
-        count: this.counters![score],
-      }),
-      title: game.i18n.format("OSE.dialog.generateScore", {
-        score: label,
-        count: this.counters![score],
-      }),
+    // Roll gold
+    debugger;
+    html.find("a.gold-roll").on("click", (ev) => {
+      this.onClickRollGold();
+    });
+
+    // Manually change a score
+    html.find<HTMLInputElement>("input.score-value").on("change", (ev) => {
+      const score = parseInt(ev.currentTarget.value);
+      const attribute: Attribute = $(ev.currentTarget)
+        .closest(".form-group")
+        .data("score") as Attribute;
+      this.onChangeScoreValue(attribute, score);
+    });
+
+    // Roll all
+    html.find("a.auto-roll").on("click", async (ev) => {
+      this.onClickAutoRoll();
     });
   }
 
-  /**
-   *
-   * @param options
-   * @returns
-   */
-  override async close(...args: Parameters<FormApplication["close"]>) {
-    const [options] = args;
-    // Gather scores
-    const speaker = ChatMessage.getSpeaker({ actor: this.object });
+  private onChangeScoreValue(score: Attribute, value: number) {
+    this.scores[score] = value;
+    this.computeStatistics();
+    this.render();
+  }
+
+  private async onClickAutoRoll() {
+    const scores = Object.keys(
+      CONFIG.OSE.scores
+    ) as (keyof typeof CONFIG.OSE.scores)[];
+    await Promise.all([
+      ...scores.map((attribute) => this.rollScore(attribute, true)),
+      this.rollGold(true),
+    ]);
+
+    this.computeStatistics();
+
     const templateData = {
-      config: CONFIG.OSE,
-      scores: this.scores,
       title: game.i18n.localize("OSE.dialog.generator"),
-      // @ts-ignore Assumed pollution of the OseActor
-      stats: this.object.data.stats,
+      img: this.object.img,
+      scoreNames: CONFIG.OSE.scores,
+      scores: this.scores,
+      stats: this.stats,
       gold: this.gold,
     };
     const content = await renderTemplate(
@@ -169,65 +183,77 @@ export class OseCharacterCreator extends FormApplication<
     );
     ChatMessage.create({
       content: content,
-      speaker,
+      speaker: ChatMessage.getSpeaker({ actor: this.object }),
     });
-    return super.close(options);
+
+    this.render();
   }
 
-  /** @override */
-  activateListeners(html: JQuery) {
-    super.activateListeners(html);
-    html.find("a.score-roll").click((ev) => {
-      let el = ev.currentTarget.parentElement?.parentElement!;
-      let score = el!.dataset.score as Attribute;
-      this.rollScore(score, { event: ev }).then((r) => {
-        this.scores![score] = { value: r.total! };
-        $(el).find("input").val(r.total!).trigger("change");
-      });
-    });
+  private async onClickRollGold() {
+    await this.rollGold();
+    this.render();
+  }
 
-    html.find("a.gold-roll").click((ev) => {
-      let el = ev.currentTarget.parentElement?.parentElement?.parentElement!;
-      this.rollScore("gold", { event: ev }).then((r) => {
-        this.gold = 10 * r.total!;
-        $(el).find(".gold-value").val(this.gold);
-      });
-    });
+  private async onClickRollScore(attribute: Attribute) {
+    await this.rollScore(attribute);
+  }
 
-    html.find("input.score-value").change((ev) => {
-      // FIXME: When I manually change a score, it isn't reflected in the final results when I click save. This is an issue in production.
-      this.doStats(ev);
-    });
+  private async rollScore(attribute: Attribute, skipMessage = false) {
+    this.counters[attribute]++;
+    const label = game.i18n.localize(`OSE.scores.${attribute}.long`);
+    const roll = await this.createSingleRoll(
+      "3d6",
+      label,
+      this.counters[attribute],
+      skipMessage
+    );
+    this.scores[attribute] = roll.total;
+  }
 
-    html.find("a.auto-roll").click(async (ev) => {
-      const stats: Attribute[] = ["str", "int", "dex", "wis", "con", "cha"];
-      for (let char of stats) {
-        const r = await this.rollScore(char, { event: ev, skipMessage: true });
-        this.scores![char] = { value: r.total! };
-      }
-      this.doStats(ev);
-      const r = await this.rollScore("gold", { event: ev, skipMessage: true });
-      this.gold = 10 * r.total!;
-      this.submit();
+  private async rollGold(skipMessage = false) {
+    this.counters.gold++;
+    const label = game.i18n.localize("OSE.items.gp.short");
+    const roll = await this.createSingleRoll(
+      "3d6 * 10",
+      label,
+      this.counters.gold,
+      skipMessage
+    );
+    this.gold = roll.total;
+  }
+
+  private createSingleRoll(
+    roll: string,
+    label: string,
+    count: number,
+    skipMessage: boolean = false
+  ) {
+    const title = game.i18n.format("OSE.dialog.generateScore", {
+      score: label,
+      count,
+    });
+    return simpleRoll({
+      title,
+      skipMessage,
+      rollParts: [roll],
+      rollingEntity: this.object,
     });
   }
 
-  protected override async _onSubmit(
-    event: Event,
-    {
-      updateData,
-      preventClose = false,
-      preventRender = false,
-    }: FormApplication.OnSubmitOptions | undefined = {}
-  ): Promise<Partial<Record<string, unknown>>> {
-    updateData = { ...updateData, data: { scores: this.scores } };
-    await super._onSubmit(event, {
-      updateData: updateData,
-      preventClose: preventClose,
-      preventRender: preventRender,
-    });
-    // Generate gold
-    this.object.createEmbeddedDocuments("Item", [
+  /**
+   * This method is called upon form submission after form data is validated
+   * @param event The SubmitEvent
+   * @param formData Bound data from the form. Used for updating the actor directly.
+   */
+  protected override async _updateObject(
+    _: Event,
+    formData: object
+  ): Promise<void> {
+    await this.object.update(formData);
+
+    // Generate gold, the gold value won't be in the formData as the input field is always disabled.
+    // Gold can only be generated via rolling which is set in rollGold()
+    await this.object.createEmbeddedDocuments("Item", [
       {
         name: game.i18n.localize("OSE.items.gp.short"),
         type: "item",
@@ -242,23 +268,5 @@ export class OseCharacterCreator extends FormApplication<
         },
       },
     ]);
-    return {};
-  }
-  /**
-   * This method is called upon form submission after form data is validated
-   * @param event {Event}       The initial triggering submission event
-   * @param formData {Object}   The object of validated form data with which to update the object
-   * @private
-   */
-  protected async _updateObject(
-    event: Event,
-    formData?: object | undefined
-  ): Promise<void> {
-    event.preventDefault();
-    // Update the actor
-    await this.object.update(formData);
-
-    // Re-draw the updated sheet
-    this.object.sheet?.render(true);
   }
 }
