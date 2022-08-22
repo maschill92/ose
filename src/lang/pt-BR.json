@@ -274,7 +274,7 @@
   "OSE.reaction.Friendly": "{name} é Amigável",
   "OSE.CombatFlag.SpellDeclared": "Feitiço Declarado",
   "OSE.CombatFlag.RetreatFromMeleeDeclared": "Retirada do Corpo a Corpo Declarada",
-  "OSE.warn.moreThanOneItemWithName": "Seu Ator {actorName} tem mais de um Item com nome ${itemName}. O primeiro item correspondente será escolhido.",
+  "OSE.warn.moreThanOneItemWithName": "Seu Ator {actorName} tem mais de um Item com nome {itemName}. O primeiro item correspondente será escolhido.",
   "OSE.error.macrosOnlyForOwnedItems": "Você só pode criar botão de macro para Itens próprios",
   "OSE.error.noItemWithName": "Seu Ator {actorName} não tem um item chamado {itemName}.",
   "OSE.error.notEnoughGP": "Este Ator não tem PO suficiente para pagar por este inventário.",

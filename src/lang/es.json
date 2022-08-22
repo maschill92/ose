@@ -274,7 +274,7 @@
   "OSE.reaction.Friendly": "{name} es amistoso",
   "OSE.CombatFlag.SpellDeclared": "Hechizo declarado",
   "OSE.CombatFlag.RetreatFromMeleeDeclared": "Retirada declarada",
-  "OSE.warn.moreThanOneItemWithName": "Tu actor controlado {actorName} tiene más de un objeto que se llama ${itemName}. El primer objeto que concuerde será seleccionado.",
+  "OSE.warn.moreThanOneItemWithName": "Tu actor controlado {actorName} tiene más de un objeto que se llama {itemName}. El primer objeto que concuerde será seleccionado.",
   "OSE.error.macrosOnlyForOwnedItems": "Solo puedes crear botones de macro con los objetos que poseas",
   "OSE.error.noItemWithName": "Tu actor controlado {actorName} no tiene el objeto llamado {itemName}.",
   "OSE.error.notEnoughGP": "Este actor no posee suficiente MO para pagar su inventario.",

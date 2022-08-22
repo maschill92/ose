@@ -44,9 +44,8 @@ export function createOseMacro(data: any, slot: number): void | false | Promise<
  * Create a Macro from an Item drop.
  * Get an existing item macro if one exists, otherwise create a new one.
  * @param itemName
- * @return FIXME: foundry expects "false" to prevent calling additional hooks. This should probably be made boolean
  */
-export async function rollItemMacro(itemName: string): Promise<void> {
+export function rollItemMacro(itemName: string): void  {
   const speaker = ChatMessage.getSpeaker();
   let actor;
   if (speaker.token) actor = game.actors?.tokens[speaker.token];
@@ -64,8 +63,7 @@ export async function rollItemMacro(itemName: string): Promise<void> {
     );
   } else if (items.length === 0) {
     ui.notifications.error(
-      // FIXME: This isn't in any lang files.
-      game.i18n.format("OSE.warn.noItemWithName", {
+      game.i18n.format("OSE.error.noItemWithName", {
         actorName: actor?.name,
         itemName: itemName,
       })

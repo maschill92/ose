@@ -274,7 +274,7 @@
   "OSE.reaction.Friendly": "{name} è Amichevole",
   "OSE.CombatFlag.SpellDeclared": "Incantesimo Dichiarato",
   "OSE.CombatFlag.RetreatFromMeleeDeclared": "Ritiro dal Combattimento in Mischia Dichiarato",
-  "OSE.warn.moreThanOneItemWithName": "Il personaggio {actorName} che controlli, possiede più di un oggetto denominato \"${itemName}\". Verrà scelto il primo oggetto corrispondente.",
+  "OSE.warn.moreThanOneItemWithName": "Il personaggio {actorName} che controlli, possiede più di un oggetto denominato \"{itemName}\". Verrà scelto il primo oggetto corrispondente.",
   "OSE.error.macrosOnlyForOwnedItems": "Puoi creare pulsanti macro soltanto per oggetti di tua proprietà",
   "OSE.error.noItemWithName": "Il personaggio {actorName} che controlli, non è in possesso di alcun oggetto denominato \"{itemName}\".",
   "OSE.error.notEnoughGP": "Questo personaggio non ha abbastanza MO per coprire il costo del suo equipaggiamento.",

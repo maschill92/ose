@@ -20,7 +20,7 @@ declare global {
 
   interface Game {
     ose: {
-      rollItemMacro: (itemName: string) => Promise<void>;
+      rollItemMacro: (itemName: string) => void;
       oseCombat: OseCombat;
     };
   }
