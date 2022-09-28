@@ -27,9 +27,9 @@ export class OseActorSheet<
 
     data.config = {
       ...CONFIG.OSE,
-      ascendingAC: game.settings.get("ose", "ascendingAC"),
-      initiative: game.settings.get("ose", "initiative") != "group",
-      encumbrance: game.settings.get("ose", "encumbranceOption"),
+      ascendingAC: game.settings.get(game.system.id, "ascendingAC"),
+      initiative: game.settings.get(game.system.id, "initiative") != "group",
+      encumbrance: game.settings.get(game.system.id, "encumbranceOption"),
     };
     data.isNew = this.actor.isNew();
 
@@ -42,9 +42,9 @@ export class OseActorSheet<
     initialContent?: string
   ) {
     // remove some controls to the editor as the space is lacking
-    if (name == "data.details.description") {
-      options.toolbar = "styleselect bullist hr table removeFormat save";
-    }
+    // if (name == "data.details.description") {
+    //   options.toolbar = "styleselect bullist hr table removeFormat save";
+    // }
     super.activateEditor(name, options, initialContent);
   }
 
@@ -105,14 +105,13 @@ export class OseActorSheet<
 
   _toggleItemSummary(event: JQuery.TriggeredEvent) {
     event.preventDefault();
-    const summary = $(event.currentTarget)
-      .closest(".item-header")
-      .next(".item-summary");
-
-    if (summary.css("display") === "none") {
-      summary.slideDown(200);
+    const itemSummary = event.currentTarget
+      .closest(".item-entry.item")
+      .querySelector(".item-summary");
+    if (itemSummary.style.display === "") {
+      itemSummary.style.display = "block";
     } else {
-      summary.slideUp(200);
+      itemSummary.style.display = "";
     }
   }
 
@@ -124,11 +123,12 @@ export class OseActorSheet<
 
   async _removeItemFromActor(event: JQuery.TriggeredEvent) {
     const item = this._getItemFromActor(event);
+    const itemData = item?.system || item?.data?.data; //v9-compatibility
     const itemDisplay = event.currentTarget.closest(".item-entry");
 
-    if (item.data.type === "container" && item.data.data.itemIds) {
-      const containedItems = item.data.data.itemIds;
-      const updateData = containedItems.reduce<any[]>((acc, val) => {
+    if (item.type === "container" && itemData.itemIds) {
+      const containedItems = itemData.itemIds;
+      const updateData = containedItems.reduce((acc, val) => {
         acc.push({ _id: val.id, "data.containerId": "" });
         return acc;
       }, []);
@@ -143,13 +143,12 @@ export class OseActorSheet<
    */
   _useConsumable(event: JQuery.TriggeredEvent, decrement: boolean) {
     const item = this._getItemFromActor(event);
+    const itemData = item?.system || item?.data?.data; //v9-compatibility
 
     if (decrement) {
-      // @ts-ignore should consider only physical item types?
-      item.update({ "data.quantity.value": item.data.data.quantity.value - 1 });
+      item.update({ "data.quantity.value": itemData.quantity.value - 1 });
     } else {
-      // @ts-ignore should consider only physical item types?
-      item.update({ "data.quantity.value": item.data.data.quantity.value + 1 });
+      item.update({ "data.quantity.value": itemData.quantity.value + 1 });
     }
   }
 
@@ -172,20 +171,22 @@ export class OseActorSheet<
     spells.each((_, el) => {
       let itemId = el.dataset.itemId as string;
       const item = this.actor.items.get(itemId);
-      item?.update({
+      const itemData = item?.system || item?.data?.data; //v9-compatibility
+      item.update({
         _id: item.id,
         // @ts-ignore should verify that item is a spell
-        "data.cast": item.data.data.memorized,
+        "data.cast": itemData.memorized,
       });
     });
   }
 
   async _rollAbility(event: JQuery.ClickEvent) {
     const item = this._getItemFromActor(event);
-    if (item.data.type == "weapon") {
+    const itemData = item?.system || item?.data?.data; //v9-compatibility
+    if (item.type == "weapon") {
       if (this.actor.data.type === "monster") {
         item.update({
-          data: { counter: { value: item.data.data.counter.value - 1 } },
+          data: { counter: { value: itemData.counter.value - 1 } },
         });
       }
       item.rollWeapon({ skipDialog: event.ctrlKey || event.metaKey });
@@ -209,8 +210,7 @@ export class OseActorSheet<
     let element = event.currentTarget;
     let attack = element.parentElement.parentElement.dataset.attack;
     const rollData = {
-      // @ts-ignore not sure where this comes from, perhaps subclasses?
-      actor: this.data,
+      actor: isNewerVersion(game.version, "10.264") ? this : this.data, //v9-compatibility
       roll: {},
     };
     actorObject.targetAttack(rollData, attack, {
@@ -229,11 +229,12 @@ export class OseActorSheet<
     );
     const targetId = dropTarget ? dropTarget.dataset?.itemId : null;
     const target = siblings.find((s) => s.data._id === targetId);
+    const targetData = target?.system || target?.data?.data; //v9-compatibility
 
     // Dragging items into a container
     if (
-      target?.data.type === "container" &&
-      target?.data.data.containerId === ""
+      (target?.type === "container" || target?.data?.type === "container") &&
+      targetData.containerId === ""
     ) {
       this.actor.updateEmbeddedDocuments("Item", [
         { _id: source.id, "data.containerId": target.id },
@@ -251,6 +252,7 @@ export class OseActorSheet<
   }
 
   _onDragStart(event: DragEvent) {
+    const v10 = isNewerVersion(game.version, "10.264");
     const li = event.currentTarget as HTMLElement;
     let itemIdsArray: OseItem[] = [];
     if ((event.target as HTMLElement).classList.contains("content-link"))
@@ -275,10 +277,10 @@ export class OseActorSheet<
     if (li.dataset.itemId) {
       const item = this.actor.items.get(li.dataset.itemId)!;
       dragData.type = "Item";
-      dragData.data = item.data;
-      if (item.data.type === "container" && item.data.data.itemIds.length) {
+      dragData.data = v10 ? item : item.data;
+      if (item.type === "container" && item.system.itemIds.length) {
         //otherwise JSON.stringify will quadruple stringify for some reason
-        itemIdsArray = item.data.data.itemIds;
+        itemIdsArray = v10 ? item.system.itemIds : item.data.data.itemIds;
       }
     }
 
@@ -302,34 +304,121 @@ export class OseActorSheet<
       })
     );
   }
+  async _onDropItem(event, data){
+    const v10 = isNewerVersion(game.version, "10.264");
+    const item = await Item.implementation.fromDropData(data);
+    const itemContainer = v10 ? this.object.items.get(item?.system?.containerId) : this.object.items.get(item?.data?.data?.containerId);
+    const itemData = item.toObject();
+    const targetEl = event.target.closest('.item')
+    const targetItem = this.object.items.get(targetEl?.dataset?.itemId)
+    let targetIsContainer
+    if(v10) targetIsContainer = targetItem?.type == 'container' ? true : false;
+    if(v10) targetIsContainer = targetItem?.data?.type == 'container' ? true : false;
+    const exists = this.object.items.get(item.id) ? true : false;
+    console.log(exists)
 
-  // @ts-ignore need to fix the return type
-  async _onDropItemCreate(
-    ...[itemData]: Parameters<ActorSheet["_onDropItemCreate"]>
-  ) {
-    //override to fix hidden items because their original containers don't exist on this actor
-    const itemDataArray = itemData instanceof Array ? itemData : [itemData];
-    itemDataArray.forEach((item) => {
-      if (
-        "containerId" in item.data &&
-        item.data.containerId &&
-        item.data.containerId !== ""
-      )
-        // @ts-ignore type check here.
-        item.data.containerId = "";
-      if (item.type === "container" && typeof item.data.itemIds === "string") {
-        //itemIds was double stringified to fix strange behavior with stringify blanking our Arrays
-        const containedItems = JSON.parse(item.data.itemIds);
-        // @ts-ignore determine type for this
-        containedItems.forEach((containedItem) => {
-          containedItem.data.containerId = "";
-        });
-        // @ts-ignore align containedItems type with itemData
-        itemDataArray.push(...containedItems);
+
+    if(targetIsContainer){
+      return this._onContainerItemAdd(item, targetItem)
+    }  else if (itemContainer){
+      this._onContainerItemRemove(item, itemContainer)
+
+    } else{
+      if(!exists){
+      return this._onDropItemCreate([itemData])
       }
-    });
-    // @ts-ignore need to improve these types?
-    return this.actor.createEmbeddedDocuments("Item", itemDataArray);
+    }
+    
+    
+    
+  }
+  async _onContainerItemRemove(item, container){
+    const v10 = isNewerVersion(game.version, "10.264");
+    let newList = v10 ? container.system.itemIds.filter(i=>i.id != item.id) : container.data.data.itemIds.filter(i=>i.data,id != item.data.id);
+    const itemObj = v10 ? this.object.items.get(item.id) : this.object.items.get(item.data.id);
+    if(v10){
+      await container.update({system: {itemIds: newList}});
+      await itemObj.update({system:{containerId: ''}});
+    }
+    if(!v10){
+      await container.update({data:{data:{itemIds: newList}}});
+      await itemObj.update({data:{data:{containerId: ''}}});
+    }
+
+  }
+  async _onContainerItemAdd(item, target){
+    const v10 = isNewerVersion(game.version, "10.264");
+    const itemData = item.toObject();
+    const container = v10 ? this.object.items.get(target.id) :this.object.items.get(target.data.id);
+    
+    const containerId = v10 ? container.id : container.data.id;
+    const itemObj = v10 ? this.object.items.get(item.id) : this.object.items.get(item.data.id);
+    const alreadyExists = v10 ? container.system.itemIds.find(i=>i.id == item.id) :container.data.data.itemIds.find(i=>i.data.id == item.data.id);
+    if(!alreadyExists){
+      if(v10){
+        const newList = [...container.system.itemIds];
+        newList.push(item.id);
+        await container.update({system:{itemIds: newList}})
+        await itemObj.update({system:{containerId: container.id}})
+      }
+      if(!v10){
+        const newList = [...container.data.data.itemIds];
+        newList.push(item.data.id);
+        await container.update({data:{ data: {itemIds: newList}}})
+        await itemObj.update({data:{ data: {containerId: container.id}}})
+      }
+    }
+    
+  }
+  async _onDropItemCreate(itemData, container = false) {
+    const v10 = isNewerVersion(game.version, "10.264");
+    //override to fix hidden items because their original containers don't exist on this actor
+    itemData = itemData instanceof Array ? itemData : [itemData];
+    itemData.forEach((item) => {
+
+      if(v10){
+        if (item.system.containerId && item.system.containerId !== "")
+          item.system.containerId = "";}
+        if (item.type === "container" && typeof item.system.itemIds === "string") {
+          //itemIds was double stringified to fix strange behavior with stringify blanking our Arrays
+          const containedItems = JSON.parse(item.system.itemIds);
+          containedItems.forEach((containedItem) => {
+            containedItem.system.containerId = "";
+          });
+          itemData.push(...containedItems);
+        }
+      if(!v10){
+        if (item.data.containerId && item.data.containerId !== "")
+        item.data.containerId = "";
+        if (item.type === "container" && typeof item.data.data.itemIds === "string") {
+          //itemIds was double stringified to fix strange behavior with stringify blanking our Arrays
+          const containedItems = JSON.parse(item.data.data.itemIds);
+          containedItems.forEach((containedItem) => {
+            containedItem.data.data.containerId = "";
+          });
+          itemData.push(...containedItems);
+        }
+      };
+
+      
+    })
+    if (!container) {
+      return this.actor.createEmbeddedDocuments("Item", itemData);
+    }
+    if (container){
+      let itemIds = v10 ? container.system.itemIds : container.data.data.itemIds;
+      itemIds.push(itemData.id);
+      const item = this.actor.items.get(itemData[0]._id);
+      if(v10){
+        await item.update({system:{containerId: container.id}});
+        await container.update({system:{itemIds: itemIds}});
+      }
+      if(!v10){
+        await item.update({data:{data:{containerId: container.id}}});
+        await container.update({data:{data:{itemIds: itemIds}}});
+      }
+
+    }
   }
 
   /* -------------------------------------------- */
@@ -384,7 +473,7 @@ export class OseActorSheet<
       const itemData = {
         name: name ? name : `New ${type.capitalize()}`,
         type: type,
-        data: duplicate(header.dataset),
+        data: header.dataset,
       };
       delete itemData.data["type"];
       return itemData;

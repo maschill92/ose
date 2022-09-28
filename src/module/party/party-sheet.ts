@@ -63,7 +63,7 @@ export class OsePartySheet extends FormApplication<
    */
   override getData(): OsePartySheetData {
     const settings = {
-      ascending: game.settings.get("ose", "ascendingAC"),
+      ascending: game.settings.get(game.system.id, "ascendingAC"),
     };
 
     let data = {
@@ -72,6 +72,7 @@ export class OsePartySheet extends FormApplication<
       user: game.user!,
       settings: settings,
     };
+
     return data;
   }
 
@@ -96,7 +97,6 @@ export class OsePartySheet extends FormApplication<
    */
   _onDrop(event: DragEvent) {
     event.preventDefault();
-
     // WIP Drop Items
     try {
       // TODO: Consider using Actor/Folder.fromDropData
@@ -104,7 +104,8 @@ export class OsePartySheet extends FormApplication<
 
       switch (data.type) {
         case "Actor":
-          return this._onDropActor(data);
+
+          return this._onDropActor(event, data);
         case "Folder":
           return this._onDropFolder(data);
       }
@@ -113,13 +114,14 @@ export class OsePartySheet extends FormApplication<
     }
   }
 
-  _onDropActor(data: any) {
+  async _onDropActor(data: any) {
+   
     if (data.type !== "Actor") {
       return;
     }
 
     const actors = game.actors;
-    let droppedActor = actors?.find((actor) => actor.id === data.id);
+    let droppedActor = await fromUuid(data.uuid);
 
     if (droppedActor) {
       this._addActorToParty(droppedActor);

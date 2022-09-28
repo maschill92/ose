@@ -35,10 +35,24 @@ export class OseItem extends Item {
     super.prepareData();
   }
 
-  prepareDerivedData() {
-    this.data.data.autoTags = this.getAutoTagList();
+  async prepareDerivedData() {
+    const itemData = this?.system || this?.data?.data; //v9-compatibility
+    itemData.autoTags = this.getAutoTagList();
     // @ts-ignore Tag handling is a bit inconsistent, ignoring.
-    this.data.data.manualTags = this.data.data.tags;
+    itemData.manualTags = itemData.tags;
+
+    // Rich text description
+    if (isNewerVersion(game.version, "10.264")) {
+      itemData.enrichedDescription = await TextEditor.enrichHTML(
+        itemData.description,
+        { async: true }
+      );
+    } else {
+      itemData.description = TextEditor.enrichHTML(
+        itemData.description,
+        htmlOptions
+      );
+    }
   }
 
   static chatListeners(html: JQuery) {
@@ -50,22 +64,23 @@ export class OseItem extends Item {
     });
   }
 
-  getChatData(htmlOptions?: Partial<TextEditor.EnrichOptions>) {
-    const data = duplicate(this.data.data);
+  async getChatData(htmlOptions?: Partial<TextEditor.EnrichOptions>) {
+    const itemType = this?.type || this?.data?.type; //v9-compatibility
 
-    // Rich text description
-    data.description = TextEditor.enrichHTML(data.description, htmlOptions);
+    const itemData = this?.system || this?.data?.data; //v9-compatibility
 
     // Item properties
     const props = [];
 
-    if (this.data.type == "weapon") {
-      // @ts-ignore Using duplicated data, doesn't have property types
-      data.tags.forEach((t) => props.push(t.value));
+    if (itemType == "weapon") {
+      itemData.tags.forEach((t) => props.push(t.value));
     }
-    if (this.data.type == "spell") {
-      // @ts-ignore Using duplicated data, doesn't have property types
-      props.push(`${data.class} ${data.lvl}`, data.range, data.duration);
+    if (itemType == "spell") {
+      props.push(
+        `${itemData.class} ${itemData.lvl}`,
+        itemData.range,
+        itemData.duration
+      );
     }
     if ("equipped" in data) {
       props.push(data.equipped ? "Equipped" : "Not Equipped");
@@ -73,8 +88,8 @@ export class OseItem extends Item {
 
     // Filter properties and return
     // @ts-ignore Using duplicated data, doesn't have property types
-    data.properties = props.filter((p) => !!p);
-    return data;
+    itemData.properties = props.filter((p) => !!p);
+    return itemData;
   }
 
   rollWeapon(options: { skipDialog?: boolean } = {}) {
@@ -84,18 +99,19 @@ export class OseItem extends Item {
 
     let isNPC = this.actor?.data.type !== "character";
     const targets = 5;
-    const data = this.data.data;
+    const itemData = this?.system || this?.data?.data; //v9-compatibility
+
     let type = isNPC ? "attack" : "melee";
     const rollData = {
       item: this.data,
       actor: this.actor?.data,
       roll: {
-        save: this.data.data.save,
+        save: itemData.save,
         target: null,
       },
     };
 
-    if (data.missile && data.melee && !isNPC) {
+    if (itemData.missile && itemData.melee && !isNPC) {
       // Dialog
       new Dialog({
         title: "Choose Attack Range",
@@ -119,7 +135,7 @@ export class OseItem extends Item {
         default: "melee",
       }).render(true);
       return true;
-    } else if (data.missile && !isNPC) {
+    } else if (itemData.missile && !isNPC) {
       type = "missile";
     }
     this.actor?.targetAttack(rollData, type, options);
@@ -129,7 +145,8 @@ export class OseItem extends Item {
   async rollFormula(
     options: { event?: JQuery.Event; skipDialog?: boolean } = {}
   ) {
-    const data = this.data.data;
+    const data = this?.system || this?.data?.data; //v9-compatibility
+
     // @ts-ignore should check data.type.
     if (!data.roll) {
       throw new Error("This Item does not have a formula to roll!");
@@ -171,9 +188,10 @@ export class OseItem extends Item {
     if (this.data.type !== "spell") {
       return;
     }
+    const itemData = this?.system || this?.data?.data; //v9-compatibility
     this.update({
       data: {
-        cast: this.data.data.cast - 1,
+        cast: itemData.cast - 1,
       },
     }).then(() => {
       this.show();
@@ -211,9 +229,10 @@ export class OseItem extends Item {
 
   getAutoTagList(): Item["data"]["data"]["autoTags"] {
     const tagList = [];
-    const data = this.data.data;
+    const data = this?.system || this?.data?.data; //v9-compatibility
+    const itemType = this?.type || this?.data?.type; //v9-compatibility
 
-    switch (this.data.type) {
+    switch (itemType) {
       case "container":
       case "item":
         break;
@@ -265,12 +284,12 @@ export class OseItem extends Item {
   }
 
   pushManualTag(values: string[]) {
-    const data = this.data.data;
+    const data = this?.system || this?.data?.data; //v9-compatibility
+
     let update = [];
     // @ts-ignore
     if (data.tags) {
-      // @ts-ignore
-      update = duplicate(data.tags);
+      update = data.tags;
     }
     // FIXME: This data could be any of item type but should really only be weapon, armor, item... Issues being the "autofilling" of checkboxes for weapon data.
     // Current implementation results in "polluting" armor and items with the melee, slow, and missile booleans
@@ -316,7 +335,9 @@ export class OseItem extends Item {
 
   popManualTag(value: string) {
     // @ts-ignore. Not all Items have tags
-    const tags = this.data.data.tags;
+    const itemData = this?.system || this?.data?.data; //v9-compatibility
+
+    const tags = itemData.tags;
     if (!tags) return;
 
     // @ts-ignore, needs a proper tags type.
@@ -328,7 +349,8 @@ export class OseItem extends Item {
   }
 
   roll(options = {}) {
-    switch (this.data.type) {
+    const itemData = this?.system || this?.data?.data; //v9-compatibility
+    switch (this.type) {
       case "weapon":
         this.rollWeapon(options);
         break;
@@ -336,7 +358,7 @@ export class OseItem extends Item {
         this.spendSpell();
         break;
       case "ability":
-        if (this.data.data.roll) {
+        if (itemData.roll) {
           this.rollFormula();
         } else {
           this.show();
@@ -353,21 +375,21 @@ export class OseItem extends Item {
    * @return {Promise}
    */
   async show() {
+    const itemType = this?.type || this?.data?.type; //v9-compatibility
     // Basic template rendering data
-    const token = this.actor?.token;
+    const token = this.actor?.token; //v10: prototypeToken?
     const templateData = {
       actor: this.actor,
       tokenId: token ? `${token?.parent?.id}.${token.id}` : null,
-      item: foundry.utils.duplicate(this.data),
-      data: this.getChatData(),
+      item: this.data,
+      data: await this.getChatData(),
       // @ts-ignore this property doesn't exist
       labels: this.labels,
       // @ts-ignore this property doesn't exist
       isHealing: this.isHealing,
       // @ts-ignore this property doesn't exist
       hasDamage: this.hasDamage,
-      isSpell: this.data.type === "spell",
-      // @ts-ignore this property doesn't exist
+      isSpell: itemType === "spell",
       hasSave: this.hasSave,
       config: CONFIG.OSE,
     };

@@ -80,8 +80,9 @@ export class OsePartyXP extends FormApplication<
       if (a.data.type !== "character") {
         return;
       }
+      const actorData = a?.system || a?.data.data; //v9-compatibility
       const xpShare = Math.floor(
-        (a.data.data.details.xp.share / 100) * baseXpShare
+        (actorData.details.xp.share / 100) * baseXpShare
       );
       html.find(`li[data-actor-id='${a.id}'] input`).val(xpShare);
     });

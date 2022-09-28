@@ -25,7 +25,8 @@ export class OseCombat {
     // Check groups
     data.combatants = [];
     let groups: Partial<Record<PatternColor, { present: boolean }>> = {};
-    combat.data.combatants.forEach((cbt) => {
+    let combatants = combat?.combatants || combat?.data?.combatants; //v9-compatibility
+    combatants.forEach((cbt) => {
       const group = cbt.getFlag(game.system.id, "group");
       // @ts-ignore could be undefined
       groups[group] = { present: true };
@@ -51,7 +52,10 @@ export class OseCombat {
         if (!data.combatants[i].actor) {
           return;
         }
-        if (data.combatants[i].actor.data.data.isSlow) {
+        let actorData =
+          data.combatants[i].actor?.system ||
+          data.combatants[i].actor?.data?.data;
+        if (actorData.isSlow) {
           await data.combatants[i].update({
             initiative: OseCombat.STATUS_SLOW,
           });
@@ -75,7 +79,7 @@ export class OseCombat {
     combat: Parameters<typeof OseCombat["preUpdateCombat"]>[0],
     data: Parameters<typeof OseCombat["preUpdateCombat"]>[1]
   ) {
-    let reroll = game.settings.get("ose", "rerollInitiative");
+    let reroll = game.settings.get(game.system.id, "rerollInitiative");
     if (!["reset", "reroll"].includes(reroll)) {
       return;
     }
@@ -88,8 +92,9 @@ export class OseCombat {
   ) {
     let updates: { _id: string | null, initiative?: number }[] = [];
     let rolls = [];
-    for (let i = 0; i < combat.data.combatants.size; i++) {
-      let c = combat.data.combatants.contents[i];
+    let combatants = combat?.combatants || combat?.data?.data; //v9-compatibility
+    for (let i = 0; i < combatants.size; i++) {
+      let c = combatants.contents[i];
       // This comes from foundry.js, had to remove the update turns thing
       // Roll initiative
       // @ts-ignore protected function being called, getInitiativeRoll internally called _getInitiativeFormula. Can just call const roll = await c.getInitiatieRoll() without a parameter.
@@ -115,9 +120,10 @@ export class OseCombat {
       );
       //add initiative value to update
       //check if actor is slow
-      let value = cbt?.actor?.data.data.isSlow
-        ? OseCombat.STATUS_SLOW
-        : roll.total;
+      let value =
+        cbt.actor?.system?.isSlow || cbt.actor?.data?.data?.isSlow //v9-compatibility
+          ? OseCombat.STATUS_SLOW
+          : roll.total;
       //check if actor is defeated
       if ('skipDefeated' in combat.settings && combat.settings.skipDefeated && cbt?.isDefeated) {
         value = OseCombat.STATUS_DIZZY;
@@ -191,7 +197,7 @@ export class OseCombat {
     });
     OseCombat.announceListener(html);
 
-    let init = game.settings.get("ose", "initiative") === "group";
+    let init = game.settings.get(game.system.id, "initiative") === "group";
     if (!init) {
       return;
     }
@@ -230,9 +236,10 @@ export class OseCombat {
     if (!data) {
       return;
     }
-    let init = game.settings.get("ose", "initiative");
+    let init = game.settings.get(game.system.id, "initiative");
     // Why do you reroll ?
-    if (combatant.actor?.data.data.isSlow) {
+    const actorData = combatant.actor?.system || combatant.actor?.data?.data;
+    if (actorData.isSlow) {
       data.initiative = -789;
       return;
     }
@@ -327,7 +334,8 @@ export class OseCombat {
     // @ts-ignore "black" isn't a valid color as defined in config.
     let color: PatternColor = "black";
     // @ts-ignore
-    switch (token.data.disposition) {
+    let disposition = token?.disposition || token?.data?.disposition;
+    switch (disposition) {
       case -1:
         color = "red";
         break;
@@ -343,8 +351,8 @@ export class OseCombat {
         group: color,
       },
     };
-    combat.data.update({ flags: { ose: { group: color } } });
-  };
+    combat.updateSource({ flags: { ose: { group: color } } });
+  }
 
   static activateCombatant(li: JQuery) {
     const turn = game.combat?.turns.findIndex(
@@ -369,8 +377,8 @@ export class OseCombat {
     diff,
     id
   ) => {
-    let init = game.settings.get("ose", "initiative");
-    let reroll = game.settings.get("ose", "rerollInitiative");
+    let init = game.settings.get(game.system.id, "initiative");
+    let reroll = game.settings.get(game.system.id, "rerollInitiative");
     if (!data.round) {
       return;
     }

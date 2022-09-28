@@ -172,17 +172,17 @@ export class OseDice {
       victim: null,
       details: "",
     };
-    result.target = data.roll.thac0!;
+    result.target = data.roll.thac0;
+    let targetActorData =
+      data.roll.target?.actor?.system ||
+      data.roll.target?.actor?.data?.data ||
+      null; //v9-compatibility
 
-    const actor: Actor | null =
-      data.roll.target && typeof data.roll.target === "object"
-        ? data.roll.target.actor
-        : null;
-    const targetAc = actor ? actor.data.data.ac.value : 9;
-    const targetAac = actor ? actor.data.data.aac.value : 0;
-    result.victim = actor ? actor.data.name : null;
+    const targetAc = data.roll.target ? targetActorData.ac.value : 9;
+    const targetAac = data.roll.target ? targetActorData.aac.value : 0;
+    result.victim = data.roll.target ? data.roll.target.data.name : null;
 
-    if (game.settings.get("ose", "ascendingAC")) {
+    if (game.settings.get(game.system.id, "ascendingAC")) {
       if (
         // @ts-ignore terms are RollTerm objects and not numbers
         (roll.terms[0] != 20 && roll.total < targetAac) ||

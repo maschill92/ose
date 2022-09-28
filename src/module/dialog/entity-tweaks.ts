@@ -46,7 +46,7 @@ export class OseEntityTweaks extends FormApplication<
     // @ts-ignore modifies Actor data
     data.config = {
       ...CONFIG.OSE,
-      ascendingAC: game.settings.get("ose", "ascendingAC"),
+      ascendingAC: game.settings.get(game.system.id, "ascendingAC"),
     };
     // @ts-ignore
     return data;
