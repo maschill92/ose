@@ -2,36 +2,45 @@ import { OseDice } from "../dice";
 import { OseItem } from "../item/entity";
 
 export class OseActor extends Actor {
+
+  constructor(...args) {
+    super(...args);
+  }
   /**
    * Extends data from base Actor class
    */
 
-  prepareData() {
-    super.prepareData();
-    if (this.type !== 'character') {
-      const data = this?.system || this?.data?.data; //v9-compatibility
+  // prepareData() {
+  //   super.prepareData();
+  //   if (this.type !== 'character') {
+  //     const data = this?.system || this?.data?.data; //v9-compatibility
 
-      const actorType = this?.type || this?.data?.type; //v9-compatibility
+  //     const actorType = this?.type || this?.data?.type; //v9-compatibility
 
-      // Compute modifiers from actor scores
-      this._isSlow();
+  //     // Compute modifiers from actor scores
+  //     this._isSlow();
+  //     this.computeModifiers();
+  //     this._isSlow();
+  //     this.computeAC();
+  //     this.computeEncumbrance();
+  //     this.computeTreasure();
 
-      // Determine Initiative
-      if (game.settings.get(game.system.id, "initiative") != "group") {
-        data.initiative.value = data.initiative.mod;
-        if (actorType === "character") {
-          data.initiative.value += data.scores.dex.init;
-        }
-      } else {
-        data.initiative.value = 0;
-      }
-      data.movement.encounter = Math.floor(data.movement.base / 3);
-    }
-  }
+  //     // Determine Initiative
+  //     if (game.settings.get(game.system.id, "initiative") != "group") {
+  //       data.initiative.value = data.initiative.mod;
+  //       if (actorType === "character") {
+  //         data.initiative.value += data.scores.dex.init;
+  //       }
+  //     } else {
+  //       data.initiative.value = 0;
+  //     }
+  //     data.movement.encounter = Math.floor(data.movement.base / 3);
+  //   }
+  // }
 
   prepareDerivedData() {
     // @TODO Once the monster data model is done, this can go
-    if (this.type === 'character')
+    // if (this.type === 'character')
       this.system.prepareDerivedData?.();
   }
 
@@ -95,19 +104,9 @@ export class OseActor extends Actor {
     });
   }
 
+  // TODO: REMOVE?
   isNew() {
-    const data = this?.system || this?.data?.data; //v9-compatibility
-
-    const actorType = this?.type || this?.data?.type; //v9-compatibility
-    if (actorType == "character") {
-      return this.system.isNew;
-    } else if (actorType == "monster") {
-      let ct = 0;
-      Object.values(data.saves).forEach((el) => {
-        ct += el.value;
-      });
-      return ct == 0 ? true : false;
-    }
+    return this.system.isNew;
   }
 
   generateSave(hd) {

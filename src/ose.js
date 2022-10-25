@@ -19,6 +19,7 @@ import { OsePartySheet } from "./module/party/party-sheet";
 import './e2e';
 
 import OseDataModelCharacter from './module/actor/data-model-character';
+import OseDataModelMonster from './module/actor/data-model-monster';
 
 /* -------------------------------------------- */
 /*  Foundry VTT Initialization                  */
@@ -62,6 +63,7 @@ Hooks.once("init", async function () {
   CONFIG.Item.documentClass = OseItem;
 
   CONFIG.Actor.systemDataModels['character'] = OseDataModelCharacter;
+  CONFIG.Actor.systemDataModels['monster'] = OseDataModelMonster;
 
   // Register sheet application classes
   Actors.unregisterSheet("core", ActorSheet);
